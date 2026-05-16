@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iceland Trip</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0805;font-family:'Crimson Pro',Georgia,serif;color:#e8ddd0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* AUTH */
+#auth-screen{position:fixed;inset:0;background:#0a0805;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9000;text-align:center;padding:24px;}
+#auth-screen h1{font-family:'Cinzel',serif;font-size:2.2rem;color:#ff7a1e;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;}
+#auth-screen p{color:rgba(232,221,208,0.45);font-style:italic;margin-bottom:44px;font-size:1rem;}
+#auth-screen.gone{display:none;}
+#no-access{position:fixed;inset:0;background:#0a0805;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:9000;text-align:center;padding:24px;}
+#no-access h2{font-family:'Cinzel',serif;color:#ff5014;font-size:1.3rem;margin-bottom:14px;}
+#no-access p{color:rgba(232,221,208,0.45);font-style:italic;max-width:340px;line-height:1.7;}
+#no-access.show{display:flex;}
+#sign-in-btn{font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px 34px;border-radius:3px;border:1px solid rgba(255,120,30,0.5);background:rgba(255,120,30,0.15);color:#ff9040;cursor:pointer;transition:all 0.2s;}
+#sign-in-btn:hover:not(:disabled){background:rgba(255,120,30,0.3);}
+#sign-in-btn:disabled{opacity:0.45;cursor:default;}
+#auth-msg{margin-top:14px;font-size:0.78rem;color:rgba(232,221,208,0.38);font-style:italic;min-height:18px;}
+
+/* HEADER */
+#app{display:flex;flex-direction:column;height:100vh;visibility:hidden;}
+#app.show{visibility:visible;}
+header{padding:10px 16px;background:#0a0805;border-bottom:1px solid rgba(255,120,30,0.2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;z-index:500;position:relative;}
+header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-spacing:0.15em;color:#ff7a1e;text-transform:uppercase;}
+.tbtn{font-family:'Cinzel',serif;font-size:0.63rem;letter-spacing:0.1em;text-transform:uppercase;padding:5px 11px;border-radius:2px;border:1px solid rgba(255,120,30,0.3);background:transparent;color:rgba(232,221,208,0.4);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.tbtn.on{background:rgba(255,120,30,0.15);color:#ff9040;border-color:rgba(255,120,30,0.6);}
+.lbtn{font-family:'Cinzel',serif;font-size:0.63rem;letter-spacing:0.1em;text-transform:uppercase;padding:5px 11px;border-radius:2px;border:1px solid rgba(232,221,208,0.15);background:transparent;color:rgba(232,221,208,0.38);cursor:pointer;transition:all 0.2s;}
+.lbtn:hover{color:#e8ddd0;border-color:rgba(232,221,208,0.38);}
+.leg-row{display:flex;gap:11px;align-items:center;margin-left:auto;}
+.leg{display:flex;align-items:center;gap:4px;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:rgba(232,221,208,0.45);}
+.ld{width:8px;height:8px;border-radius:50%;border:2px solid;flex-shrink:0;}
+.ld.a{background:rgba(255,80,20,0.75);border-color:#ff5014;box-shadow:0 0 4px #ff5014;}
+.ld.d{background:rgba(255,165,40,0.65);border-color:#ffa028;box-shadow:0 0 4px #ffa028;}
+.ld.i{background:rgba(130,110,80,0.55);border-color:#8c7a5a;}
+.ld.m{background:rgba(32,210,190,0.85);border-color:#20d2be;box-shadow:0 0 4px #20d2be;}
+.ld.y{background:rgba(80,180,255,0.85);border-color:#50b4ff;box-shadow:0 0 4px #50b4ff;}
+.user-row{display:flex;align-items:center;gap:7px;}
+#user-label{font-size:0.68rem;color:rgba(232,221,208,0.38);font-style:italic;}
+.so-btn{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;padding:3px 7px;border:1px solid rgba(232,221,208,0.15);background:transparent;color:rgba(232,221,208,0.3);cursor:pointer;border-radius:2px;}
+.so-btn:hover{color:#e8ddd0;}
+
+/* SEARCH */
+#search-bar{padding:7px 14px;background:#0e0c09;border-bottom:1px solid rgba(32,210,190,0.15);flex-shrink:0;display:none;position:relative;}
+#search-bar.show{display:block;}
+#search-input{width:100%;background:#1a1510;border:1px solid rgba(32,210,190,0.25);border-radius:3px;color:#e8ddd0;font-family:'Crimson Pro',serif;font-size:0.92rem;padding:7px 11px;outline:none;}
+#search-input:focus{border-color:rgba(32,210,190,0.5);}
+#search-drop{position:absolute;left:14px;right:14px;background:#1a1510;border:1px solid rgba(32,210,190,0.2);border-top:none;border-radius:0 0 3px 3px;z-index:2000;display:none;max-height:210px;overflow-y:auto;}
+.si{padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(32,210,190,0.07);font-size:0.86rem;transition:background 0.15s;}
+.si:last-child{border-bottom:none;}
+.si:hover{background:rgba(32,210,190,0.08);}
+.si b{display:block;color:#e8ddd0;}
+.si small{color:rgba(232,221,208,0.38);font-size:0.72rem;}
+
+/* MAP */
+#map-wrap{flex:1;position:relative;}
+#map{height:100%;width:100%;}
+.leaflet-container{background:#0e0c09;}
+.leaflet-tile{filter:brightness(0.42) saturate(0.25) hue-rotate(10deg);}
+
+/* LIST PANEL */
+#list-panel{position:absolute;left:0;top:0;bottom:0;width:264px;background:#0e0c09;border-right:1px solid rgba(255,120,30,0.18);z-index:800;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform 0.25s ease;}
+#list-panel.open{transform:translateX(0);}
+.lp-head{padding:13px 14px 11px;border-bottom:1px solid rgba(255,120,30,0.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.lp-head span{font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#ff9040;}
+.lp-close{background:none;border:none;color:rgba(232,221,208,0.38);cursor:pointer;font-size:0.95rem;}
+.lp-close:hover{color:#e8ddd0;}
+#list-items{flex:1;overflow-y:auto;padding:5px 0;}
+#list-items::-webkit-scrollbar{width:3px;}
+#list-items::-webkit-scrollbar-thumb{background:rgba(255,120,30,0.18);border-radius:2px;}
+.li{padding:9px 13px;cursor:pointer;border-bottom:1px solid rgba(255,120,30,0.06);display:flex;gap:9px;align-items:center;transition:background 0.15s;}
+.li:hover{background:rgba(255,120,30,0.05);}
+.li-thumb{width:36px;height:36px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+.li-empty{width:36px;height:36px;border-radius:2px;flex-shrink:0;background:rgba(32,210,190,0.07);display:flex;align-items:center;justify-content:center;font-size:0.85rem;}
+.li-info b{display:block;font-size:0.83rem;color:#e8ddd0;font-family:'Cinzel',serif;font-weight:400;letter-spacing:0.02em;}
+.li-info small{font-size:0.7rem;color:rgba(232,221,208,0.38);}
+.li-empty-msg{padding:22px 14px;text-align:center;color:rgba(232,221,208,0.28);font-style:italic;font-size:0.82rem;line-height:1.65;}
+
+/* POPUPS */
+.leaflet-popup-content-wrapper{background:#12100c;border:1px solid rgba(255,120,30,0.32);border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.75);padding:0;}
+.leaflet-popup-tip{background:#12100c;}
+.leaflet-popup-content{margin:0;width:248px!important;}
+.pi{padding:12px 14px 11px;}
+.p-reg{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(232,221,208,0.28);margin-bottom:4px;font-family:'Cinzel',serif;}
+.p-name{font-family:'Cinzel',serif;font-size:0.88rem;font-weight:600;color:#ff9040;letter-spacing:0.04em;line-height:1.3;margin-bottom:5px;}
+.p-status{display:inline-block;font-size:0.57rem;font-family:'Cinzel',serif;letter-spacing:0.12em;text-transform:uppercase;padding:2px 6px;border-radius:2px;margin-bottom:7px;font-weight:600;}
+.s-act{background:rgba(255,80,20,0.16);color:#ff6030;border:1px solid rgba(255,80,20,0.38);}
+.s-dor{background:rgba(255,165,40,0.16);color:#ffaa28;border:1px solid rgba(255,165,40,0.38);}
+.s-ina{background:rgba(130,110,80,0.16);color:#a08868;border:1px solid rgba(130,110,80,0.38);}
+.p-desc{font-size:0.77rem;color:rgba(232,221,208,0.62);line-height:1.5;margin-bottom:9px;font-style:italic;}
+.p-wiki{display:block;font-size:0.63rem;font-family:'Cinzel',serif;letter-spacing:0.09em;text-transform:uppercase;color:#ff7a1e;text-decoration:none;padding:5px 9px;border:1px solid rgba(255,120,30,0.28);border-radius:2px;text-align:center;background:rgba(255,120,30,0.05);}
+.p-wiki:hover{background:rgba(255,120,30,0.16);}
+.p-nowiki{font-size:0.63rem;color:rgba(232,221,208,0.2);text-align:center;font-style:italic;}
+.mp-name{font-family:'Cinzel',serif;font-size:0.92rem;color:#20d2be;letter-spacing:0.04em;margin-bottom:3px;}
+.mp-date{font-size:0.72rem;color:rgba(232,221,208,0.42);margin-bottom:7px;}
+.mp-notes{font-size:0.77rem;color:rgba(232,221,208,0.58);font-style:italic;line-height:1.5;margin-bottom:8px;}
+.mp-open{display:block;font-size:0.63rem;font-family:'Cinzel',serif;letter-spacing:0.09em;text-transform:uppercase;color:#20d2be;padding:5px 9px;border:1px solid rgba(32,210,190,0.28);border-radius:2px;text-align:center;background:rgba(32,210,190,0.06);cursor:pointer;}
+.mp-open:hover{background:rgba(32,210,190,0.16);}
+.mp-thumb{width:100%;height:78px;object-fit:cover;border-radius:2px;margin-bottom:7px;display:block;}
+
+/* MARKERS */
+.vdot{border-radius:50%;border:2px solid;cursor:pointer;transition:transform 0.15s;}
+.vdot:hover{transform:scale(1.7);}
+.mdot{width:12px;height:12px;border-radius:50%;border:2px solid rgba(32,210,190,0.9);cursor:pointer;transition:transform 0.15s;background:rgba(32,210,190,0.82);box-shadow:0 0 8px rgba(32,210,190,0.5);}
+.mdot:hover{transform:scale(1.6);}
+.ydot{width:13px;height:13px;background:rgba(80,180,255,0.85);border:2px solid #50b4ff;border-radius:50%;animation:pyou 1.8s ease-in-out infinite;}
+@keyframes pyou{0%,100%{box-shadow:0 0 10px #50b4ff;transform:scale(1);}50%{box-shadow:0 0 22px #50b4ff;transform:scale(1.28);}}
+
+/* MODALS */
+.ov{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.ov.open{opacity:1;pointer-events:all;}
+.mb{background:#0f0d0a;border:1px solid rgba(255,120,30,0.22);border-radius:5px;width:92%;max-width:510px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8);}
+.mb::-webkit-scrollbar{width:3px;}
+.mb::-webkit-scrollbar-thumb{background:rgba(255,120,30,0.18);border-radius:2px;}
+.mh{padding:14px 17px 12px;border-bottom:1px solid rgba(255,120,30,0.1);display:flex;align-items:flex-start;justify-content:space-between;}
+.mt{font-family:'Cinzel',serif;font-size:0.92rem;color:#ff9040;letter-spacing:0.04em;}
+.ms{font-size:0.72rem;color:rgba(232,221,208,0.36);margin-top:3px;font-style:italic;}
+.mc{background:none;border:none;color:rgba(232,221,208,0.32);font-size:1.05rem;cursor:pointer;margin-left:9px;flex-shrink:0;}
+.mc:hover{color:#e8ddd0;}
+.mbody{padding:13px 17px;}
+.fld{margin-bottom:12px;}
+.fld label{display:block;font-family:'Cinzel',serif;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(232,221,208,0.38);margin-bottom:4px;}
+.fld input,.fld textarea{width:100%;background:#1a1510;border:1px solid rgba(255,120,30,0.18);border-radius:3px;color:#e8ddd0;font-family:'Crimson Pro',serif;font-size:0.88rem;padding:7px 9px;outline:none;resize:vertical;box-sizing:border-box;}
+.fld input:focus,.fld textarea:focus{border-color:rgba(255,120,30,0.48);}
+.fld textarea{min-height:62px;}
+.mact{display:flex;gap:7px;justify-content:flex-end;padding:10px 17px 15px;border-top:1px solid rgba(255,120,30,0.08);}
+.bp{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;padding:7px 13px;border-radius:2px;border:none;background:rgba(255,120,30,0.18);color:#ff9040;cursor:pointer;transition:all 0.2s;}
+.bp:hover:not(:disabled){background:rgba(255,120,30,0.32);}
+.bp:disabled{opacity:0.38;cursor:default;}
+.bg{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;padding:7px 11px;border-radius:2px;border:1px solid rgba(232,221,208,0.14);background:transparent;color:rgba(232,221,208,0.42);cursor:pointer;transition:all 0.2s;}
+.bg:hover{border-color:rgba(232,221,208,0.38);color:#e8ddd0;}
+.bd{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;padding:7px 11px;border-radius:2px;border:1px solid rgba(200,60,30,0.28);background:rgba(200,60,30,0.09);color:#cc4422;cursor:pointer;transition:all 0.2s;}
+.bd:hover{background:rgba(200,60,30,0.22);}
+
+/* VIEW MODAL SPECIFIC */
+.vname{font-family:'Cinzel',serif;font-size:1rem;color:#20d2be;letter-spacing:0.05em;line-height:1.3;}
+.vdate{font-size:0.75rem;color:rgba(232,221,208,0.38);margin-top:4px;font-style:italic;}
+.vnotes{font-size:0.84rem;color:rgba(232,221,208,0.62);line-height:1.6;font-style:italic;padding:11px 17px 12px;border-bottom:1px solid rgba(255,120,30,0.07);}
+.psec{padding:12px 17px;}
+.psec-lbl{font-family:'Cinzel',serif;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(232,221,208,0.28);margin-bottom:8px;}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+.pcell{position:relative;aspect-ratio:1;border-radius:3px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);}
+.pcell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s;}
+.pcell:hover img{opacity:0.78;}
+.pdel{position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;background:rgba(0,0,0,0.68);border:none;color:#e8ddd0;font-size:0.65rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
+.pcell:hover .pdel{display:flex;}
+.pdel:hover{background:rgba(200,60,30,0.8);}
+.padd{aspect-ratio:1;border-radius:3px;border:1px dashed rgba(32,210,190,0.22);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;transition:all 0.2s;}
+.padd:hover{border-color:rgba(32,210,190,0.48);background:rgba(32,210,190,0.04);}
+.padd span{font-size:1.2rem;color:rgba(232,221,208,0.18);}
+.padd small{font-size:0.57rem;color:rgba(232,221,208,0.18);font-family:'Cinzel',serif;letter-spacing:0.06em;text-transform:uppercase;}
+.padd.maxed{opacity:0.38;cursor:default;pointer-events:none;}
+.pspin{aspect-ratio:1;border-radius:3px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;}
+.spin{width:16px;height:16px;border:2px solid rgba(32,210,190,0.18);border-top-color:#20d2be;border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.vact{padding:11px 17px 15px;display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid rgba(255,120,30,0.07);}
+.sv{padding:0 17px 11px;}
+.ev{padding:0 17px 11px;display:none;}
+.ev.show{display:block;}
+
+/* LIGHTBOX */
+#lb{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;}
+#lb.open{display:flex;}
+#lb img{max-width:94vw;max-height:87vh;object-fit:contain;border-radius:3px;}
+#lb-x{position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.14);color:#e8ddd0;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:0.95rem;display:flex;align-items:center;justify-content:center;}
+.lbnav{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 14px;pointer-events:none;}
+.lbb{pointer-events:all;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.14);color:#e8ddd0;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1.15rem;display:flex;align-items:center;justify-content:center;}
+.lbb:hover{background:rgba(32,210,190,0.3);}
+#lb-ctr{position:absolute;bottom:18px;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:rgba(232,221,208,0.38);}
+
+/* LOADING OVERLAY */
+#loading{position:fixed;inset:0;background:#0a0805;z-index:8000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+#loading.gone{display:none;}
+#loading .spin{width:28px;height:28px;border-width:3px;}
+#loading p{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(232,221,208,0.38);}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading"><div class="spin"></div><p>Loading…</p></div>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <h1>Iceland</h1>
+  <p>Family Trip Log &amp; Volcanic Map</p>
+  <button id="sign-in-btn" disabled>Sign in with Google</button>
+  <div id="auth-msg"></div>
+</div>
+
+<!-- NO ACCESS -->
+<div id="no-access">
+  <h2>Access Denied</h2>
+  <p>Your Google account doesn't have access to the Iceland Trip Log. Ask Adam to share the folder with you.</p>
+  <button onclick="signOut()" style="margin-top:22px;" class="bg">Try another account</button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <h1>Iceland</h1>
+    <button id="tvol" class="tbtn on">🌋 Volcanoes</button>
+    <button id="tmem" class="tbtn">📍 Memories</button>
+    <button id="tlist" class="lbtn">☰ List</button>
+    <div class="leg-row" id="leg-row">
+      <div class="leg"><div class="ld a"></div>Active</div>
+      <div class="leg"><div class="ld d"></div>Dormant</div>
+      <div class="leg"><div class="ld i"></div>Inactive</div>
+      <div class="leg"><div class="ld y"></div>You</div>
+    </div>
+    <div class="user-row">
+      <span id="user-label"></span>
+      <button class="so-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </header>
+  <div id="search-bar">
+    <input id="search-input" type="text" placeholder="Search for a place in Iceland…" autocomplete="off">
+    <div id="search-drop"></div>
+  </div>
+  <div id="map-wrap">
+    <div id="list-panel">
+      <div class="lp-head"><span>Places Visited</span><button class="lp-close" id="lp-close">✕</button></div>
+      <div id="list-items"></div>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="ov" id="add-ov">
+  <div class="mb">
+    <div class="mh">
+      <div><div class="mt" id="add-title">Add Location</div><div class="ms" id="add-sub"></div></div>
+      <button class="mc" id="add-x">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="fld"><label>Name</label><input id="add-name" type="text"></div>
+      <div class="fld"><label>Date Visited</label><input id="add-date" type="date"></div>
+      <div class="fld"><label>Notes</label><textarea id="add-notes" placeholder="What was it like?"></textarea></div>
+    </div>
+    <div class="mact">
+      <button class="bg" id="add-cancel">Cancel</button>
+      <button class="bp" id="add-save">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="ov" id="view-ov">
+  <div class="mb">
+    <div class="mh">
+      <div><div class="vname" id="vname"></div><div class="vdate" id="vdate"></div></div>
+      <button class="mc" id="view-x">✕</button>
+    </div>
+    <div class="sv" id="sv"><div id="vnotes" class="vnotes" style="padding:10px 0 11px;border:none;"></div></div>
+    <div class="ev" id="ev">
+      <div class="fld" style="margin-top:11px;"><label>Name</label><input id="en" type="text"></div>
+      <div class="fld"><label>Date</label><input id="ed" type="date"></div>
+      <div class="fld"><label>Notes</label><textarea id="eno"></textarea></div>
+    </div>
+    <div class="psec">
+      <div class="psec-lbl">Photos <span id="pcount" style="color:rgba(232,221,208,0.22);"></span></div>
+      <div class="pgrid" id="pgrid"></div>
+    </div>
+    <div class="vact">
+      <button class="bg" id="edit-tog">Edit Details</button>
+      <button class="bp" id="edit-save" style="display:none;">Save</button>
+      <button class="bg" id="edit-can" style="display:none;">Cancel</button>
+      <button class="bd" id="del-loc" style="margin-left:auto;">Delete Place</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lb">
+  <img id="lb-img" src="" alt="">
+  <button id="lb-x">✕</button>
+  <div class="lbnav">
+    <button class="lbb" id="lb-p">&#8249;</button>
+    <button class="lbb" id="lb-n">&#8250;</button>
+  </div>
+  <div id="lb-ctr"></div>
+</div>
+
+<input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
+
+<script>
+// ══════════════════════════════════
+// CONFIG
+// ══════════════════════════════════
+const CLIENT_ID       = '297373764983-9p8fa8p8doif3ghigjql8b3i04s2im0p.apps.googleusercontent.com';
+const DRIVE_FOLDER_ID = '11UkpL7ejwwuVKbOgJ9j2ExEeVMNzcpkE';
+const MAX_PHOTOS      = 10;
+const SCOPES          = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
+
+// ══════════════════════════════════
+// STATE
+// ══════════════════════════════════
+let token = null;
+let locs  = [];
+let locsFileId = null;
+let map, vGroup, mGroup;
+let mMarkers = {};
+let showVol = true, showMem = false;
+let curLocId = null;
+let lbPhotos = [], lbIdx = 0;
+let photoCache = {};
+let pendingLat = null, pendingLng = null;
+let searchTimer = null;
+
+// ══════════════════════════════════
+// AUTH
+// ══════════════════════════════════
+let gsiReady = false;
+function onGsiLoad() {
+  gsiReady = true;
+  const btn = document.getElementById('sign-in-btn');
+  btn.disabled = false;
+  btn.textContent = 'Sign in with Google';
+  document.getElementById('loading').classList.add('gone');
+  document.getElementById('auth-screen').classList.remove('gone');
+}
+
+// Poll for GSI readiness
+(function waitGsi() {
+  if (window.google && window.google.accounts) { onGsiLoad(); }
+  else { setTimeout(waitGsi, 100); }
+})();
+
+document.getElementById('sign-in-btn').addEventListener('click', () => {
+  setMsg('Opening sign-in…');
+  const btn = document.getElementById('sign-in-btn');
+  btn.disabled = true;
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (r) => {
+      if (r.error) { setMsg('Sign-in error: ' + r.error); btn.disabled = false; return; }
+      token = r.access_token;
+      setMsg('Checking access…');
+      await boot();
+    }
+  });
+  client.requestAccessToken({ prompt: 'select_account' });
+});
+
+async function boot() {
+  const btn = document.getElementById('sign-in-btn');
+  try {
+    // Get email
+    const me = await dGet('https://www.googleapis.com/oauth2/v2/userinfo');
+    document.getElementById('user-label').textContent = me.email || '';
+
+    // Check folder access
+    const ok = await checkFolderAccess();
+    if (!ok) {
+      document.getElementById('auth-screen').classList.add('gone');
+      document.getElementById('no-access').classList.add('show');
+      return;
+    }
+
+    // Load data
+    setMsg('Loading trip data…');
+    await loadLocs();
+
+    // Show app
+    document.getElementById('auth-screen').classList.add('gone');
+    document.getElementById('app').classList.add('show');
+    if (!map) initMap();
+    await renderAllMMarkers();
+    renderList();
+    startGPS();
+
+  } catch(e) {
+    console.error(e);
+    setMsg('Error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+function setMsg(m) { document.getElementById('auth-msg').textContent = m; }
+
+function signOut() {
+  if (token) google.accounts.oauth2.revoke(token, ()=>{});
+  token = null;
+  location.reload();
+}
+
+// ══════════════════════════════════
+// DRIVE API
+// ══════════════════════════════════
+async function dGet(url, qs = '') {
+  const res = await fetch(url + (qs ? '?' + qs : ''), { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) { const t = await res.text(); throw new Error('Drive ' + res.status + ': ' + t.slice(0,120)); }
+  return res.json();
+}
+
+async function dList(q, fields = 'files(id,name,mimeType)') {
+  const data = await dGet('https://www.googleapis.com/drive/v3/files', new URLSearchParams({ q, fields, pageSize: 200 }));
+  return data.files || [];
+}
+
+async function dReadFile(id) {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('Read failed ' + res.status);
+  return res;
+}
+
+async function dWriteJson(name, content, parentId, existingId = null) {
+  const meta = { name, mimeType: 'application/json' };
+  if (!existingId) meta.parents = [parentId];
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' }));
+  const url = existingId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const res = await fetch(url, { method: existingId ? 'PATCH' : 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+  if (!res.ok) throw new Error('Write JSON failed ' + res.status);
+  return res.json();
+}
+
+async function dMkdir(name, parentId) {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+  });
+  if (!res.ok) throw new Error('mkdir failed');
+  return res.json();
+}
+
+async function dUploadPhoto(file, parentId) {
+  const meta = { name: file.name, parents: [parentId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', file);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form
+  });
+  if (!res.ok) throw new Error('Photo upload failed ' + res.status);
+  return res.json();
+}
+
+async function dDelete(id) {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+}
+
+// ══════════════════════════════════
+// FOLDER + LOCATIONS
+// ══════════════════════════════════
+async function checkFolderAccess() {
+  try {
+    await dList(`'${DRIVE_FOLDER_ID}' in parents and trashed=false`, 'files(id)');
+    return true;
+  } catch { return false; }
+}
+
+async function loadLocs() {
+  const files = await dList(`'${DRIVE_FOLDER_ID}' in parents and name='locations.json' and trashed=false`, 'files(id,name)');
+  if (files.length > 0) {
+    locsFileId = files[0].id;
+    const res = await dReadFile(locsFileId);
+    locs = await res.json();
+  } else {
+    locs = [];
+    const f = await dWriteJson('locations.json', [], DRIVE_FOLDER_ID);
+    locsFileId = f.id;
+  }
+}
+
+async function saveLocs() {
+  await dWriteJson('locations.json', locs, DRIVE_FOLDER_ID, locsFileId);
+}
+
+// ══════════════════════════════════
+// PHOTOS
+// ══════════════════════════════════
+async function getPhotoUrl(driveId) {
+  if (photoCache[driveId]) return photoCache[driveId];
+  const res = await dReadFile(driveId);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  photoCache[driveId] = url;
+  return url;
+}
+
+// ══════════════════════════════════
+// MAP
+// ══════════════════════════════════
+const VC = {
+  active:   { f:'rgba(255,80,20,0.82)',  s:'#ff5014', g:'#ff5014' },
+  dormant:  { f:'rgba(255,165,40,0.78)', s:'#ffa028', g:'#ffa028' },
+  inactive: { f:'rgba(130,110,80,0.62)', s:'#8c7a5a', g:'none' }
+};
+
+const VOLCANOES = [
+  {n:"Reykjanes",lat:63.817,lng:-22.704,st:"active",r:"Reykjanes Peninsula",d:"SW tip where the Mid-Atlantic Ridge emerges above sea level.",w:"https://en.wikipedia.org/wiki/Reykjanes_Peninsula"},
+  {n:"Eldvörp",lat:63.850,lng:-22.567,st:"active",r:"Reykjanes Peninsula",d:"Crater row within the Svartsengi volcanic system.",w:null},
+  {n:"Svartsengi",lat:63.878,lng:-22.433,st:"active",r:"Reykjanes Peninsula",d:"Fissure system beneath the Blue Lagoon. Erupted repeatedly 2023–2025.",w:"https://en.wikipedia.org/wiki/Svartsengi_volcanic_system"},
+  {n:"Sundhnúkur",lat:63.874,lng:-22.397,st:"active",r:"Reykjanes Peninsula",d:"Erupted April 2025, forcing evacuation of Grindavík.",w:null},
+  {n:"Þorbjörn",lat:63.866,lng:-22.437,st:"active",r:"Reykjanes Peninsula",d:"Volcanic hill north of Grindavík. Dramatic uplift 2023–25.",w:null},
+  {n:"Fagradalsfjall",lat:63.893,lng:-22.270,st:"active",r:"Reykjanes Peninsula",d:"Erupted 2021, 2022, and 2023 after 800+ years of dormancy.",w:"https://en.wikipedia.org/wiki/Fagradalsfjall"},
+  {n:"Litli-Hrútur",lat:63.919,lng:-22.204,st:"active",r:"Reykjanes Peninsula",d:"2023 eruption site — 900 m fissure opened July 10.",w:null},
+  {n:"Keilir",lat:63.942,lng:-22.172,st:"inactive",r:"Reykjanes Peninsula",d:"Iconic cone-shaped tuya from a subglacial Ice Age eruption.",w:"https://en.wikipedia.org/wiki/Keilir"},
+  {n:"Trölladyngja (SW)",lat:63.933,lng:-22.101,st:"inactive",r:"Reykjanes Peninsula",d:"Postglacial shield volcano.",w:null},
+  {n:"Krýsuvík",lat:63.896,lng:-22.052,st:"active",r:"Reykjanes Peninsula",d:"Boiling mud pools and fumaroles. One of Iceland's most striking geothermal areas.",w:"https://en.wikipedia.org/wiki/Kr%C3%BDsuv%C3%ADk"},
+  {n:"Sveifluháls",lat:63.917,lng:-22.000,st:"inactive",r:"Reykjanes Peninsula",d:"Volcanic ridge bordering Kleifarvatn lake.",w:null},
+  {n:"Ögmundarhraun",lat:63.833,lng:-22.567,st:"inactive",r:"Reykjanes Peninsula",d:"12th-century lava field.",w:null},
+  {n:"Brennisteinsfjöll",lat:63.923,lng:-21.813,st:"dormant",r:"Reykjanes Peninsula",d:"NE end of the Reykjanes chain. Last erupted ~13th century.",w:null},
+  {n:"Þríhnúkagígur",lat:63.998,lng:-21.699,st:"inactive",r:"Reykjanes Peninsula",d:"Only volcano on Earth you can descend into. Magma chamber emptied ~4,000 years ago.",w:"https://en.wikipedia.org/wiki/%C3%9Er%C3%ADhn%C3%BAkag%C3%ADgur"},
+  {n:"Hengill",lat:64.083,lng:-21.317,st:"active",r:"Hengill Area",d:"Central volcano near Þingvellir. Last eruption ~2,000 years ago.",w:"https://en.wikipedia.org/wiki/Hengill"},
+  {n:"Hrómundartindur",lat:64.100,lng:-21.217,st:"dormant",r:"Hengill Area",d:"Part of the Hengill system. Last erupted ~5,000 years ago.",w:null},
+  {n:"Grensdalur",lat:64.050,lng:-21.200,st:"dormant",r:"Hengill Area",d:"Extinct central volcano with high geothermal heat flow.",w:null},
+  {n:"Ingólfsfjall",lat:63.967,lng:-21.100,st:"inactive",r:"Hengill Area",d:"Table mountain named after Iceland's first settler.",w:null},
+  {n:"Kerið",lat:64.041,lng:-20.885,st:"inactive",r:"SW Iceland",d:"Vivid volcanic crater lake, ~6,500 years old. Golden Circle highlight.",w:"https://en.wikipedia.org/wiki/Ker%C3%AD%C3%B0"},
+  {n:"Búrfell (SW)",lat:64.033,lng:-21.833,st:"inactive",r:"SW Iceland",d:"Small shield volcano near Hafnarfjörður.",w:null},
+  {n:"Rauðhólar",lat:64.094,lng:-21.745,st:"inactive",r:"SW Iceland",d:"Red pseudocraters near Reykjavík. Mars-like landscape.",w:null},
+  {n:"Þingvellir fissures",lat:64.255,lng:-21.130,st:"active",r:"SW Iceland",d:"Almannagjá rift — the plates visibly pulling apart. World's oldest parliament.",w:"https://en.wikipedia.org/wiki/%C3%9Eingvellir"},
+  {n:"Skjaldbreiður",lat:64.409,lng:-20.753,st:"inactive",r:"SW Iceland",d:"The shield volcano that gave its category its name.",w:"https://en.wikipedia.org/wiki/Skjaldbre%C3%AD%C3%B0ur"},
+  {n:"Ok",lat:64.567,lng:-20.467,st:"inactive",r:"Western Volcanic Zone",d:"Iceland's first glacier declared dead from climate change in 2019.",w:"https://en.wikipedia.org/wiki/Ok_(volcano)"},
+  {n:"Prestahnúkur",lat:64.617,lng:-20.567,st:"dormant",r:"Western Volcanic Zone",d:"Central volcano within the Langjökull system.",w:null},
+  {n:"Langjökull",lat:64.650,lng:-20.350,st:"active",r:"Western Volcanic Zone",d:"Iceland's second largest glacier over an active volcanic system.",w:"https://en.wikipedia.org/wiki/Langj%C3%B6kull"},
+  {n:"Þórisjökull",lat:64.733,lng:-20.283,st:"dormant",r:"Western Volcanic Zone",d:"Small glacier over a central volcano.",w:null},
+  {n:"Eiríksjökull",lat:64.767,lng:-20.383,st:"dormant",r:"Western Volcanic Zone",d:"Iceland's largest table mountain (tuya).",w:"https://en.wikipedia.org/wiki/E%C3%ADr%C3%ADksj%C3%B6kull"},
+  {n:"Grábrok",lat:64.772,lng:-21.538,st:"inactive",r:"Western Volcanic Zone",d:"3,400-year-old scoria crater. Easy hike to the rim.",w:"https://en.wikipedia.org/wiki/Gr%C3%A1br%C3%B3k"},
+  {n:"Ljósufjöll",lat:64.867,lng:-22.233,st:"dormant",r:"Western Volcanic Zone",d:"Volcanic system in Dalir. Last eruption ~1,000 years ago.",w:null},
+  {n:"Helgrindur",lat:64.933,lng:-23.017,st:"dormant",r:"Western Volcanic Zone",d:"Mountains on Snæfellsnes formed by volcanic activity.",w:null},
+  {n:"Snæfellsjökull",lat:64.808,lng:-23.783,st:"dormant",r:"Snæfellsnes",d:"Jules Verne set Journey to the Center of the Earth here. Last erupted ~1,800 years ago.",w:"https://en.wikipedia.org/wiki/Sn%C3%A6fellsj%C3%B6kull"},
+  {n:"Saxhóll",lat:64.883,lng:-23.717,st:"inactive",r:"Snæfellsnes",d:"Small scoria crater — short staircase to panoramic views.",w:null},
+  {n:"Búðaklettur",lat:64.817,lng:-23.383,st:"inactive",r:"Snæfellsnes",d:"Volcanic formation near the famous black church at Búðir.",w:null},
+  {n:"Hekla",lat:63.992,lng:-19.666,st:"active",r:"Eastern Volcanic Zone",d:"'Gateway to Hell' in medieval Europe. 20+ eruptions since 874 AD. Last erupted 2000.",w:"https://en.wikipedia.org/wiki/Hekla"},
+  {n:"Tindfjallajökull",lat:63.783,lng:-19.567,st:"dormant",r:"Eastern Volcanic Zone",d:"Small ice cap over an ancient central volcano.",w:"https://en.wikipedia.org/wiki/Tindfjallaj%C3%B6kull"},
+  {n:"Eyjafjallajökull",lat:63.631,lng:-19.609,st:"dormant",r:"Eastern Volcanic Zone",d:"2010 eruption shut down European airspace for 6 days, stranding ~10 million passengers.",w:"https://en.wikipedia.org/wiki/Eyjafjallaj%C3%B6kull"},
+  {n:"Katla",lat:63.647,lng:-19.130,st:"active",r:"Eastern Volcanic Zone",d:"Massive subglacial caldera. Erupts every 40–80 years and is currently overdue.",w:"https://en.wikipedia.org/wiki/Katla_(volcano)"},
+  {n:"Goðabunga",lat:63.617,lng:-19.250,st:"active",r:"Eastern Volcanic Zone",d:"Cryptodome on the Katla/Eyjafjallajökull system.",w:null},
+  {n:"Torfajökull",lat:63.917,lng:-19.017,st:"active",r:"Eastern Volcanic Zone",d:"Iceland's largest geothermal area. Includes the Landmannalaugar highland.",w:"https://en.wikipedia.org/wiki/Torfaj%C3%B6kull"},
+  {n:"Hrafntinnusker",lat:63.933,lng:-19.083,st:"active",r:"Eastern Volcanic Zone",d:"Obsidian ridge in Torfajökull. Highlight of the Laugavegur trail.",w:null},
+  {n:"Mælifell",lat:64.117,lng:-19.133,st:"inactive",r:"Eastern Volcanic Zone",d:"Perfectly cone-shaped tuya rising from a black sand desert.",w:null},
+  {n:"Veiðivötn",lat:64.017,lng:-18.783,st:"active",r:"Eastern Volcanic Zone",d:"Fissure swarm in the Bárðarbunga system. Last major eruption 1477.",w:"https://en.wikipedia.org/wiki/Ve%C3%AD%C3%B0iv%C3%B6tn"},
+  {n:"Laki",lat:64.067,lng:-18.233,st:"dormant",r:"Eastern Volcanic Zone",d:"1783 eruption caused European famines and contributed to the French Revolution.",w:"https://en.wikipedia.org/wiki/Laki"},
+  {n:"Eldgjá",lat:63.966,lng:-18.608,st:"dormant",r:"Eastern Volcanic Zone",d:"Earth's largest volcanic canyon. The 934 AD eruption was one of history's biggest lava floods.",w:"https://en.wikipedia.org/wiki/Eldgj%C3%A1"},
+  {n:"Kerlingarfjöll",lat:64.633,lng:-19.117,st:"active",r:"Eastern Volcanic Zone",d:"Vivid rhyolite mountains with intense geothermal activity and stunning colorful slopes.",w:"https://en.wikipedia.org/wiki/Kerlingarfj%C3%B6ll"},
+  {n:"Hofsjökull",lat:64.808,lng:-18.917,st:"active",r:"Eastern Volcanic Zone",d:"Iceland's third largest glacier over a large active caldera.",w:"https://en.wikipedia.org/wiki/Hofsj%C3%B6kull"},
+  {n:"Þjórsárver shield",lat:64.417,lng:-18.317,st:"inactive",r:"Eastern Volcanic Zone",d:"Series of shield volcanoes in the Þjórsá river valley.",w:null},
+  {n:"Trölladyngja (C)",lat:64.917,lng:-17.467,st:"inactive",r:"Eastern Volcanic Zone",d:"One of Iceland's largest shield volcanoes.",w:null},
+  {n:"Grímsvötn",lat:64.417,lng:-17.317,st:"active",r:"Vatnajökull",d:"Iceland's most frequently erupting volcano under Vatnajökull. 2011 eruption reached Europe.",w:"https://en.wikipedia.org/wiki/Gr%C3%ADmsv%C3%B6tn"},
+  {n:"Bárðarbunga",lat:64.641,lng:-17.528,st:"active",r:"Vatnajökull",d:"2014–15 Holuhraun eruption was Europe's largest in 230 years — 1.6 km³ of lava.",w:"https://en.wikipedia.org/wiki/B%C3%A1r%C3%B0arbunga"},
+  {n:"Hamarinn",lat:64.317,lng:-17.833,st:"active",r:"Vatnajökull",d:"Subglacial volcano (Loki-Fögrufjöll). Caused major glacial flood in 1996.",w:null},
+  {n:"Tungnafellsjökull",lat:64.733,lng:-17.917,st:"dormant",r:"Vatnajökull",d:"Small glacier over a central volcano. Last erupted ~2,500 years ago.",w:"https://en.wikipedia.org/wiki/Tungnafellsj%C3%B6kull"},
+  {n:"Kverkfjöll",lat:64.683,lng:-16.683,st:"active",r:"Vatnajökull",d:"Ice caves where volcanic heat meets glacier. Stunning and remote.",w:"https://en.wikipedia.org/wiki/Kverkfj%C3%B6ll"},
+  {n:"Dyngjufjöll",lat:65.000,lng:-16.750,st:"active",r:"Vatnajökull",d:"Mountain massif forming the Askja caldera system.",w:null},
+  {n:"Öræfajökull",lat:63.982,lng:-16.654,st:"dormant",r:"SE Iceland",d:"Iceland's highest peak (2,110m). Largest active volcano by volume. Last erupted 1727.",w:"https://en.wikipedia.org/wiki/%C3%96r%C3%A6faj%C3%B6kull"},
+  {n:"Esjufjöll",lat:64.267,lng:-16.633,st:"dormant",r:"SE Iceland",d:"Subglacial volcano under eastern Vatnajökull.",w:null},
+  {n:"Snæfell (East)",lat:64.800,lng:-15.567,st:"inactive",r:"SE Iceland",d:"Iceland's highest free-standing mountain and an ancient glaciated central volcano.",w:"https://en.wikipedia.org/wiki/Sn%C3%A6fell_(East_Iceland)"},
+  {n:"Askja",lat:65.011,lng:-16.749,st:"active",r:"Central Highlands",d:"Remote caldera. Víti crater has a warm blue lake you can swim in. Last erupted 1961.",w:"https://en.wikipedia.org/wiki/Askja"},
+  {n:"Víti (Askja)",lat:65.025,lng:-16.717,st:"active",r:"Central Highlands",d:"Warm geothermal lake (~25°C) inside Askja caldera. Víti means 'Hell'.",w:null},
+  {n:"Herðubreið",lat:65.183,lng:-16.350,st:"inactive",r:"Central Highlands",d:"Iceland's 'Queen of Mountains' — stunning tuya in a barren lava desert.",w:"https://en.wikipedia.org/wiki/Her%C3%B0ubrei%C3%B0"},
+  {n:"Kollóttadyngja",lat:65.219,lng:-16.548,st:"inactive",r:"Central Highlands",d:"Large shield volcano north of Askja.",w:null},
+  {n:"Stóra-Upptyppingar",lat:65.033,lng:-16.283,st:"active",r:"Central Highlands",d:"Caused a major earthquake swarm in 2007–08 from magma intrusion.",w:null},
+  {n:"Hrossaborg",lat:65.450,lng:-16.400,st:"inactive",r:"Central Highlands",d:"Tuff ring in the Ódáðahraun. Filming location for the movie Oblivion.",w:null},
+  {n:"Hveravellir",lat:64.867,lng:-19.567,st:"active",r:"Central Highlands",d:"Geothermal oasis in the central highland — hot springs in a cold lava desert.",w:"https://en.wikipedia.org/wiki/Hveravellir"},
+  {n:"Fremrinámar",lat:65.433,lng:-16.633,st:"active",r:"Northern Volcanic Zone",d:"Active fissure system north of Askja. Erupted 1977.",w:null},
+  {n:"Hverfjall",lat:65.613,lng:-16.875,st:"inactive",r:"Northern Volcanic Zone",d:"Massive tephra ring, 1 km across. One of the world's best-preserved.",w:"https://en.wikipedia.org/wiki/Hverfjall"},
+  {n:"Námafjall",lat:65.633,lng:-16.817,st:"active",r:"Northern Volcanic Zone",d:"Bubbling mud pools and sulfur vents at Námaskarð. Iceland's most alien landscape.",w:"https://en.wikipedia.org/wiki/N%C3%A1mafjall"},
+  {n:"Krafla",lat:65.717,lng:-16.754,st:"active",r:"Northern Volcanic Zone",d:"'Krafla Fires' (1975–84) = 9 eruptions. A 2009 drill accidentally hit molten magma.",w:"https://en.wikipedia.org/wiki/Krafla"},
+  {n:"Gjástykki",lat:65.650,lng:-16.850,st:"active",r:"Northern Volcanic Zone",d:"Fissure swarm with dramatic 1975–84 lava fields.",w:null},
+  {n:"Leirhnúkur",lat:65.700,lng:-16.800,st:"active",r:"Northern Volcanic Zone",d:"Active lava field and fumaroles within Krafla.",w:null},
+  {n:"Þeistareykir",lat:65.883,lng:-16.983,st:"active",r:"Northern Volcanic Zone",d:"Active system near Húsavík. Large geothermal plant operates here.",w:"https://en.wikipedia.org/wiki/%C3%9Eistareykir"},
+  {n:"Mývatn volcanic field",lat:65.600,lng:-17.000,st:"active",r:"Northern Volcanic Zone",d:"Entire Mývatn area sits on an active volcanic field.",w:"https://en.wikipedia.org/wiki/M%C3%BDvatn"},
+  {n:"Surtsey",lat:63.302,lng:-20.601,st:"inactive",r:"Westman Islands",d:"Born from the sea 1963–67. UNESCO World Heritage Site. Scientists only.",w:"https://en.wikipedia.org/wiki/Surtsey"},
+  {n:"Eldfell",lat:63.428,lng:-20.267,st:"inactive",r:"Westman Islands",d:"Erupted without warning in 1973. The entire island of Heimaey evacuated overnight.",w:"https://en.wikipedia.org/wiki/Eldfell"},
+  {n:"Helgafell (Westman)",lat:63.433,lng:-20.283,st:"inactive",r:"Westman Islands",d:"Ancient volcano on Heimaey, ~5,000 years old.",w:null},
+  {n:"Eldey",lat:63.733,lng:-22.967,st:"active",r:"Offshore",d:"Volcanic rock off SW coast. The last Great Auk was killed here in 1844.",w:"https://en.wikipedia.org/wiki/Eldey"},
+  {n:"Kolbeinsey Ridge",lat:67.000,lng:-18.700,st:"active",r:"Offshore",d:"Submarine ridge north of Iceland — northern continuation of the Mid-Atlantic Ridge.",w:"https://en.wikipedia.org/wiki/Kolbeinsey_Ridge"},
+  {n:"Drangajökull",lat:66.150,lng:-22.150,st:"inactive",r:"Northwest Iceland",d:"Only Icelandic glacier that was still growing until recently.",w:"https://en.wikipedia.org/wiki/Drangaj%C3%B6kull"},
+];
+
+function initMap() {
+  map = L.map('map', { center:[64.9,-18.5], zoom:6 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:18 }).addTo(map);
+
+  vGroup = L.layerGroup().addTo(map);
+  mGroup = L.layerGroup();
+
+  // Volcano markers
+  VOLCANOES.forEach(v => {
+    const c = VC[v.st];
+    const icon = L.divIcon({ className:'', html:`<div class="vdot" style="width:11px;height:11px;background:${c.f};border-color:${c.s};box-shadow:0 0 5px ${c.g},0 0 2px rgba(0,0,0,0.9);"></div>`, iconSize:[11,11], iconAnchor:[5,5], popupAnchor:[0,-7] });
+    const lbl = v.st[0].toUpperCase() + v.st.slice(1);
+    const pop = `<div class="pi"><div class="p-reg">${v.r}</div><div class="p-name">${v.n}</div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${v.w ? `<a class="p-wiki" href="${v.w}" target="_blank" rel="noopener">→ Wikipedia</a>` : '<div class="p-nowiki">No Wikipedia article</div>'}</div>`;
+    L.marker([v.lat,v.lng], { icon }).bindPopup(pop, { closeButton:false, maxWidth:260 }).addTo(vGroup);
+  });
+
+  // GPS dot placeholder
+  const youIcon = L.divIcon({ className:'', html:'<div class="ydot"></div>', iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
+  window._youMarker = L.marker([64.9,-18.5], { icon:youIcon, zIndexOffset:3000 }).bindPopup('<div class="pi"><div class="p-name" style="color:#50b4ff;">📍 You</div></div>', { closeButton:false });
+}
+
+function startGPS() {
+  if (!navigator.geolocation) return;
+  const opts = { enableHighAccuracy:true, maximumAge:10000, timeout:15000 };
+  function upd(pos) {
+    const { latitude:lat, longitude:lng } = pos.coords;
+    if (window._youMarker) {
+      window._youMarker.setLatLng([lat,lng]).addTo(map);
+    }
+  }
+  navigator.geolocation.watchPosition(upd, ()=>{}, opts);
+}
+
+// ══════════════════════════════════
+// MEMORY MARKERS
+// ══════════════════════════════════
+function memIcon() {
+  return L.divIcon({ className:'', html:'<div class="mdot"></div>', iconSize:[12,12], iconAnchor:[6,6], popupAnchor:[0,-9] });
+}
+
+async function addMMarker(loc) {
+  if (mMarkers[loc.id]) { mGroup.removeLayer(mMarkers[loc.id]); delete mMarkers[loc.id]; }
+  const marker = L.marker([loc.lat,loc.lng], { icon:memIcon(), zIndexOffset:1000 });
+  let thumbHtml = '';
+  if (loc.drivePhotoIds && loc.drivePhotoIds.length > 0) {
+    try {
+      const src = await getPhotoUrl(loc.drivePhotoIds[0]);
+      thumbHtml = `<img class="mp-thumb" src="${src}" alt="">`;
+    } catch {}
+  }
+  const snippet = loc.notes ? (loc.notes.length > 70 ? loc.notes.slice(0,70)+'…' : loc.notes) : '';
+  const pop = `<div class="pi">${thumbHtml}<div class="mp-name">${loc.name}</div><div class="mp-date">${loc.date||'No date'}</div>${snippet?`<div class="mp-notes">${snippet}</div>`:''}<div class="mp-open" onclick="openView('${loc.id}')">→ View &amp; Photos</div></div>`;
+  marker.bindPopup(pop, { closeButton:false, maxWidth:256 });
+  mMarkers[loc.id] = marker;
+  marker.addTo(mGroup);
+}
+
+async function renderAllMMarkers() {
+  mGroup.clearLayers();
+  mMarkers = {};
+  for (const loc of locs) await addMMarker(loc);
+}
+
+// ══════════════════════════════════
+// SEARCH
+// ══════════════════════════════════
+const si = document.getElementById('search-input');
+const sd = document.getElementById('search-drop');
+
+si.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = si.value.trim();
+  if (q.length < 2) { sd.style.display='none'; return; }
+  sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">Searching…</small></div>';
+  sd.style.display = 'block';
+  searchTimer = setTimeout(() => runSearch(q), 400);
+});
+
+async function runSearch(q) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({q:q+' Iceland',format:'json',limit:5,'accept-language':'en'})}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderDrop(data);
+  } catch(e) {
+    sd.innerHTML = `<div class="si"><small style="color:#ff6060">Search error: ${e.message}</small></div>`;
+    sd.style.display = 'block';
+  }
+}
+
+function renderDrop(results) {
+  if (!results.length) {
+    sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">No results found in Iceland</small></div>';
+    sd.style.display = 'block';
+    return;
+  }
+  sd.innerHTML = '';
+  results.slice(0,5).forEach(r => {
+    const name = r.display_name.split(',')[0];
+    const sub  = r.display_name.split(',').slice(1,3).join(',').trim();
+    const el = document.createElement('div');
+    el.className = 'si';
+    el.innerHTML = `<b>${name}</b><small>${sub}</small>`;
+    el.addEventListener('click', () => {
+      sd.style.display = 'none';
+      si.value = '';
+      openAdd(parseFloat(r.lat), parseFloat(r.lon), name);
+    });
+    sd.appendChild(el);
+  });
+  sd.style.display = 'block';
+}
+
+document.addEventListener('click', e => { if (!e.target.closest('#search-bar')) sd.style.display='none'; });
+
+// ══════════════════════════════════
+// ADD MODAL
+// ══════════════════════════════════
+function openAdd(lat, lng, name='') {
+  pendingLat = lat; pendingLng = lng;
+  document.getElementById('add-title').textContent = 'Add Location';
+  document.getElementById('add-sub').textContent   = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  document.getElementById('add-name').value = name;
+  document.getElementById('add-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('add-notes').value = '';
+  map.setView([lat,lng], Math.max(map.getZoom(),11));
+  document.getElementById('add-ov').classList.add('open');
+}
+
+function closeAdd() { document.getElementById('add-ov').classList.remove('open'); }
+document.getElementById('add-x').addEventListener('click', closeAdd);
+document.getElementById('add-cancel').addEventListener('click', closeAdd);
+document.getElementById('add-ov').addEventListener('click', e => { if(e.target===document.getElementById('add-ov')) closeAdd(); });
+
+document.getElementById('add-save').addEventListener('click', async () => {
+  const name = document.getElementById('add-name').value.trim();
+  if (!name || pendingLat===null) return;
+  const btn = document.getElementById('add-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    // Create Drive subfolder for this location
+    const folderRes = await dMkdir(name, DRIVE_FOLDER_ID);
+    const loc = {
+      id: 'loc_' + Date.now(),
+      name,
+      lat: pendingLat, lng: pendingLng,
+      date: document.getElementById('add-date').value,
+      notes: document.getElementById('add-notes').value.trim(),
+      drivePhotoIds: [],
+      driveFolderId: folderRes.id
+    };
+    locs.push(loc);
+    await saveLocs();
+    await addMMarker(loc);
+    if (showMem) mGroup.addTo(map);
+    renderList();
+    closeAdd();
+    await openView(loc.id);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Save Location';
+});
+
+// ══════════════════════════════════
+// VIEW / EDIT MODAL
+// ══════════════════════════════════
+window.openView = async function(id) {
+  curLocId = id;
+  const loc = locs.find(l=>l.id===id);
+  if (!loc) return;
+  renderViewStatic(loc);
+  await renderPhotoGrid(loc);
+  document.getElementById('view-ov').classList.add('open');
+  if (mMarkers[id]) {
+    map.setView([loc.lat,loc.lng], Math.max(map.getZoom(),11));
+    setTimeout(()=>mMarkers[id].openPopup(), 300);
+  }
+};
+
+function renderViewStatic(loc) {
+  document.getElementById('vname').textContent = loc.name;
+  document.getElementById('vdate').textContent = loc.date || 'No date';
+  document.getElementById('vnotes').textContent = loc.notes || 'No notes.';
+  document.getElementById('sv').style.display = '';
+  document.getElementById('ev').classList.remove('show');
+  document.getElementById('edit-tog').style.display = '';
+  document.getElementById('edit-save').style.display = 'none';
+  document.getElementById('edit-can').style.display = 'none';
+}
+
+function closeView() { document.getElementById('view-ov').classList.remove('open'); curLocId=null; }
+document.getElementById('view-x').addEventListener('click', closeView);
+document.getElementById('view-ov').addEventListener('click', e => { if(e.target===document.getElementById('view-ov')) closeView(); });
+
+document.getElementById('edit-tog').addEventListener('click', () => {
+  const loc = locs.find(l=>l.id===curLocId); if(!loc) return;
+  document.getElementById('en').value = loc.name;
+  document.getElementById('ed').value = loc.date||'';
+  document.getElementById('eno').value = loc.notes||'';
+  document.getElementById('sv').style.display = 'none';
+  document.getElementById('ev').classList.add('show');
+  document.getElementById('edit-tog').style.display = 'none';
+  document.getElementById('edit-save').style.display = '';
+  document.getElementById('edit-can').style.display = '';
+});
+
+document.getElementById('edit-can').addEventListener('click', () => {
+  const loc = locs.find(l=>l.id===curLocId); if(loc) renderViewStatic(loc);
+});
+
+document.getElementById('edit-save').addEventListener('click', async () => {
+  const loc = locs.find(l=>l.id===curLocId); if(!loc) return;
+  const btn = document.getElementById('edit-save');
+  btn.disabled=true; btn.textContent='Saving…';
+  loc.name  = document.getElementById('en').value.trim() || loc.name;
+  loc.date  = document.getElementById('ed').value;
+  loc.notes = document.getElementById('eno').value.trim();
+  await saveLocs();
+  renderViewStatic(loc);
+  renderList();
+  await addMMarker(loc);
+  btn.disabled=false; btn.textContent='Save';
+});
+
+document.getElementById('del-loc').addEventListener('click', async () => {
+  const loc = locs.find(l=>l.id===curLocId); if(!loc) return;
+  if (!confirm(`Delete "${loc.name}" and all its photos?`)) return;
+  try {
+    // Delete Drive folder (and contents)
+    if (loc.driveFolderId) await dDelete(loc.driveFolderId);
+    locs = locs.filter(l=>l.id!==curLocId);
+    await saveLocs();
+    if (mMarkers[curLocId]) { mGroup.removeLayer(mMarkers[curLocId]); delete mMarkers[curLocId]; }
+    // Clean photo cache
+    (loc.drivePhotoIds||[]).forEach(id => { if(photoCache[id]) { URL.revokeObjectURL(photoCache[id]); delete photoCache[id]; } });
+    renderList();
+    closeView();
+  } catch(e) { alert('Delete failed: ' + e.message); }
+});
+
+// ══════════════════════════════════
+// PHOTO GRID
+// ══════════════════════════════════
+async function renderPhotoGrid(loc) {
+  const grid = document.getElementById('pgrid');
+  const countLbl = document.getElementById('pcount');
+  grid.innerHTML = '';
+  lbPhotos = [];
+
+  for (const pid of (loc.drivePhotoIds||[])) {
+    try {
+      const src = await getPhotoUrl(pid);
+      lbPhotos.push({ pid, src });
+      const idx = lbPhotos.length - 1;
+      const cell = document.createElement('div'); cell.className='pcell';
+      cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
+      cell.querySelector('img').addEventListener('click', () => openLb(idx));
+      cell.querySelector('.pdel').addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm('Delete this photo from Drive?')) return;
+        await deletePhoto(loc.id, pid);
+        const updated = locs.find(l=>l.id===loc.id);
+        if (updated) await renderPhotoGrid(updated);
+      });
+      grid.appendChild(cell);
+    } catch {}
+  }
+
+  // Add button
+  const count = (loc.drivePhotoIds||[]).length;
+  countLbl.textContent = `${count}/${MAX_PHOTOS}`;
+  const addCell = document.createElement('div');
+  addCell.className = 'padd' + (count >= MAX_PHOTOS ? ' maxed' : '');
+  addCell.innerHTML = '<span>＋</span><small>Add Photo</small>';
+  addCell.addEventListener('click', () => { if(count < MAX_PHOTOS) document.getElementById('photo-input').click(); });
+  grid.appendChild(addCell);
+}
+
+async function deletePhoto(locId, pid) {
+  try { await dDelete(pid); } catch {}
+  const loc = locs.find(l=>l.id===locId); if(!loc) return;
+  loc.drivePhotoIds = (loc.drivePhotoIds||[]).filter(id=>id!==pid);
+  if (photoCache[pid]) { URL.revokeObjectURL(photoCache[pid]); delete photoCache[pid]; }
+  await saveLocs();
+  await addMMarker(loc);
+}
+
+document.getElementById('photo-input').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  if (!files.length || !curLocId) return;
+  const loc = locs.find(l=>l.id===curLocId); if(!loc) return;
+  const remaining = MAX_PHOTOS - (loc.drivePhotoIds||[]).length;
+  const toUpload = files.slice(0, remaining);
+  if (!toUpload.length) { alert(`Max ${MAX_PHOTOS} photos per location.`); return; }
+
+  // Show spinners
+  const grid = document.getElementById('pgrid');
+  const addBtn = grid.querySelector('.padd');
+  toUpload.forEach(() => {
+    const s = document.createElement('div'); s.className='pspin';
+    s.innerHTML='<div class="spin"></div>';
+    if (addBtn) grid.insertBefore(s, addBtn); else grid.appendChild(s);
+  });
+
+  for (const file of toUpload) {
+    try {
+      const uploaded = await dUploadPhoto(file, loc.driveFolderId);
+      if (!loc.drivePhotoIds) loc.drivePhotoIds=[];
+      loc.drivePhotoIds.push(uploaded.id);
+      await saveLocs();
+    } catch(err) { console.error('Upload error:', err); }
+  }
+  e.target.value = '';
+  await renderPhotoGrid(loc);
+  await addMMarker(loc);
+});
+
+// ══════════════════════════════════
+// LIGHTBOX
+// ══════════════════════════════════
+function openLb(idx) {
+  lbIdx = idx;
+  document.getElementById('lb-img').src = lbPhotos[idx].src;
+  document.getElementById('lb-ctr').textContent = `${idx+1} / ${lbPhotos.length}`;
+  document.getElementById('lb').classList.add('open');
+}
+function closeLb() { document.getElementById('lb').classList.remove('open'); document.getElementById('lb-img').src=''; }
+document.getElementById('lb-x').addEventListener('click', closeLb);
+document.getElementById('lb').addEventListener('click', e=>{ if(e.target===document.getElementById('lb')) closeLb(); });
+document.getElementById('lb-p').addEventListener('click', e=>{ e.stopPropagation(); lbIdx=(lbIdx-1+lbPhotos.length)%lbPhotos.length; document.getElementById('lb-img').src=lbPhotos[lbIdx].src; document.getElementById('lb-ctr').textContent=`${lbIdx+1} / ${lbPhotos.length}`; });
+document.getElementById('lb-n').addEventListener('click', e=>{ e.stopPropagation(); lbIdx=(lbIdx+1)%lbPhotos.length; document.getElementById('lb-img').src=lbPhotos[lbIdx].src; document.getElementById('lb-ctr').textContent=`${lbIdx+1} / ${lbPhotos.length}`; });
+document.addEventListener('keydown', e=>{ if(!document.getElementById('lb').classList.contains('open')) return; if(e.key==='ArrowLeft') document.getElementById('lb-p').click(); if(e.key==='ArrowRight') document.getElementById('lb-n').click(); if(e.key==='Escape') closeLb(); });
+
+// ══════════════════════════════════
+// LIST
+// ══════════════════════════════════
+async function renderList() {
+  const box = document.getElementById('list-items');
+  if (!locs.length) { box.innerHTML='<div class="li-empty-msg">No places visited yet.<br>Turn on Memories and search for a location.</div>'; return; }
+  box.innerHTML='';
+  const sorted = [...locs].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  for (const loc of sorted) {
+    const li = document.createElement('div'); li.className='li';
+    let thumb = '<div class="li-empty">📍</div>';
+    if (loc.drivePhotoIds && loc.drivePhotoIds.length > 0) {
+      try { const src=await getPhotoUrl(loc.drivePhotoIds[0]); thumb=`<img class="li-thumb" src="${src}" alt="">`; } catch {}
+    }
+    li.innerHTML = `${thumb}<div class="li-info"><b>${loc.name}</b><small>${loc.date||'No date'} · ${(loc.drivePhotoIds||[]).length} photo${(loc.drivePhotoIds||[]).length!==1?'s':''}</small></div>`;
+    li.addEventListener('click', async ()=>{ document.getElementById('list-panel').classList.remove('open'); map.setView([loc.lat,loc.lng],12); await openView(loc.id); });
+    box.appendChild(li);
+  }
+}
+
+// ══════════════════════════════════
+// TOGGLES + UI
+// ══════════════════════════════════
+document.getElementById('tvol').addEventListener('click', function(){
+  showVol = !showVol; this.classList.toggle('on', showVol);
+  if (showVol) map.addLayer(vGroup); else map.removeLayer(vGroup);
+});
+
+document.getElementById('tmem').addEventListener('click', function(){
+  showMem = !showMem; this.classList.toggle('on', showMem);
+  document.getElementById('search-bar').classList.toggle('show', showMem);
+  if (showMem) {
+    map.addLayer(mGroup);
+    let ml=document.getElementById('mem-leg');
+    if (!ml) { ml=document.createElement('div'); ml.className='leg'; ml.id='mem-leg'; ml.innerHTML='<div class="ld m"></div>Memories'; document.getElementById('leg-row').prepend(ml); }
+  } else {
+    map.removeLayer(mGroup);
+    const ml=document.getElementById('mem-leg'); if(ml) ml.remove();
+  }
+});
+
+document.getElementById('tlist').addEventListener('click', ()=>{ renderList(); document.getElementById('list-panel').classList.toggle('open'); });
+document.getElementById('lp-close').addEventListener('click', ()=>document.getElementById('list-panel').classList.remove('open'));
+</script>
+</body>
+</html>
