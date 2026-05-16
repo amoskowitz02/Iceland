@@ -197,6 +197,7 @@ header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-sp
   <p>Family Trip Log &amp; Volcanic Map</p>
   <button id="sign-in-btn" disabled>Sign in with Google</button>
   <div id="auth-msg"></div>
+  <div id="auth-origin" style="margin-top:18px;font-size:0.62rem;font-family:monospace;color:rgba(232,221,208,0.18);"></div>
 </div>
 
 <!-- NO ACCESS -->
@@ -336,18 +337,43 @@ function onGsiLoad() {
   else { setTimeout(waitGsi, 100); }
 })();
 
+document.getElementById('auth-origin').textContent = window.location.origin;
+
 document.getElementById('sign-in-btn').addEventListener('click', () => {
   setMsg('Opening sign-in…');
   const btn = document.getElementById('sign-in-btn');
   btn.disabled = true;
+
+  // Re-enable if popup is closed or abandoned without completing
+  const reset = (msg) => { btn.disabled = false; if (msg) setMsg(msg); };
+  const fallback = setTimeout(() => reset(''), 90000);
+
   const client = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: async (r) => {
-      if (r.error) { setMsg('Sign-in error: ' + r.error); btn.disabled = false; return; }
+      clearTimeout(fallback);
+      if (r.error) {
+        if (r.error === 'access_denied' || r.error === 'user_cancel') {
+          reset('Sign-in cancelled. Try again.');
+        } else if (r.error === 'origin_mismatch') {
+          reset(`Auth blocked: "${window.location.origin}" is not an authorized origin. Add it in GCP → OAuth client → Authorized JavaScript Origins.`);
+        } else {
+          reset('Sign-in error: ' + r.error);
+        }
+        return;
+      }
       token = r.access_token;
       setMsg('Checking access…');
       await boot();
+    },
+    error_callback: (e) => {
+      clearTimeout(fallback);
+      if (e.type === 'popup_closed' || e.type === 'popup_failed_to_open') {
+        reset(e.type === 'popup_failed_to_open' ? 'Popup was blocked — allow popups for this site and try again.' : '');
+      } else {
+        reset('Sign-in error: ' + (e.type || e.message || JSON.stringify(e)));
+      }
     }
   });
   client.requestAccessToken({ prompt: 'select_account' });
