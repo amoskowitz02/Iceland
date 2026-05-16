@@ -664,36 +664,37 @@ si.addEventListener('input', () => {
 
 async function runSearch(q) {
   try {
-    const base = 'https://nominatim.openstreetmap.org/search';
-    let data = await (await fetch(`${base}?${new URLSearchParams({q, format:'json', limit:5, 'accept-language':'en', countrycodes:'is'})}`)).json();
-    // Fallback: retry without country restriction if nothing found
-    if (!data.length) {
-      data = await (await fetch(`${base}?${new URLSearchParams({q:q+' Iceland', format:'json', limit:5, 'accept-language':'en'})}`)).json();
+    const data = await (await fetch(`/api/places?q=${encodeURIComponent(q)}`)).json();
+    if (data.status !== 'OK' || !data.predictions.length) {
+      sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">No results found</small></div>';
+      sd.style.display = 'block';
+      return;
     }
-    renderDrop(data);
+    renderDrop(data.predictions);
   } catch(e) {
     sd.innerHTML = `<div class="si"><small style="color:#ff6060">Search error: ${e.message}</small></div>`;
     sd.style.display = 'block';
   }
 }
 
-function renderDrop(results) {
-  if (!results.length) {
-    sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">No results found in Iceland</small></div>';
-    sd.style.display = 'block';
-    return;
-  }
+function renderDrop(predictions) {
   sd.innerHTML = '';
-  results.slice(0,5).forEach(r => {
-    const name = r.display_name.split(',')[0];
-    const sub  = r.display_name.split(',').slice(1,3).join(',').trim();
+  predictions.slice(0,5).forEach(p => {
+    const name = p.structured_formatting.main_text;
+    const sub  = p.structured_formatting.secondary_text || '';
     const el = document.createElement('div');
     el.className = 'si';
     el.innerHTML = `<b>${name}</b><small>${sub}</small>`;
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       sd.style.display = 'none';
       si.value = '';
-      openAdd(parseFloat(r.lat), parseFloat(r.lon), name);
+      try {
+        const det = await (await fetch(`/api/places?placeid=${encodeURIComponent(p.place_id)}`)).json();
+        if (det.status === 'OK' && det.result.geometry) {
+          const { lat, lng } = det.result.geometry.location;
+          openAdd(lat, lng, det.result.name || name);
+        }
+      } catch(e) { alert('Could not get location: ' + e.message); }
     });
     sd.appendChild(el);
   });
