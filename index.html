@@ -878,32 +878,64 @@ async function deletePhoto(locId, pid) {
 
 document.getElementById('photo-input').addEventListener('change', async e => {
   const files = Array.from(e.target.files);
+  e.target.value = '';
   if (!files.length || !curLocId) return;
   const loc = locs.find(l=>l.id===curLocId); if(!loc) return;
-  const remaining = MAX_PHOTOS - (loc.drivePhotoIds||[]).length;
+  if (!loc.drivePhotoIds) loc.drivePhotoIds = [];
+  const remaining = MAX_PHOTOS - loc.drivePhotoIds.length;
   const toUpload = files.slice(0, remaining);
   if (!toUpload.length) { alert(`Max ${MAX_PHOTOS} photos per location.`); return; }
 
-  // Show spinners
   const grid = document.getElementById('pgrid');
   const addBtn = grid.querySelector('.padd');
-  toUpload.forEach(() => {
+
+  // Create a spinner per file upfront
+  const spinners = toUpload.map(() => {
     const s = document.createElement('div'); s.className='pspin';
     s.innerHTML='<div class="spin"></div>';
     if (addBtn) grid.insertBefore(s, addBtn); else grid.appendChild(s);
+    return s;
   });
 
-  for (const file of toUpload) {
+  for (let i = 0; i < toUpload.length; i++) {
+    const file = toUpload[i];
+    const spinner = spinners[i];
     try {
       const uploaded = await dUploadPhoto(file, loc.driveFolderId);
-      if (!loc.drivePhotoIds) loc.drivePhotoIds=[];
       loc.drivePhotoIds.push(uploaded.id);
-      await saveLocs();
-    } catch(err) { console.error('Upload error:', err); }
+
+      // Use the local file blob — no need to re-fetch from Drive
+      const src = URL.createObjectURL(file);
+      photoCache[uploaded.id] = src;
+      const pid = uploaded.id;
+      lbPhotos.push({ pid, src });
+      const idx = lbPhotos.length - 1;
+
+      const cell = document.createElement('div'); cell.className='pcell';
+      cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
+      cell.querySelector('img').addEventListener('click', () => openLb(idx));
+      cell.querySelector('.pdel').addEventListener('click', async ev => {
+        ev.stopPropagation();
+        if (!confirm('Delete this photo from Drive?')) return;
+        await deletePhoto(loc.id, pid);
+        const updated = locs.find(l=>l.id===loc.id);
+        if (updated) await renderPhotoGrid(updated);
+      });
+      spinner.replaceWith(cell);
+      document.getElementById('pcount').textContent = `${loc.drivePhotoIds.length}/${MAX_PHOTOS}`;
+    } catch(err) {
+      console.error('Upload error:', err);
+      spinner.remove();
+    }
   }
-  e.target.value = '';
-  await renderPhotoGrid(loc);
+
+  // Save once at the end, not after every upload
+  await saveLocs();
   await addMMarker(loc);
+
+  // Update add button state
+  const count = loc.drivePhotoIds.length;
+  if (addBtn) addBtn.className = 'padd' + (count >= MAX_PHOTOS ? ' maxed' : '');
 });
 
 // ══════════════════════════════════
