@@ -85,10 +85,12 @@ header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-sp
 .li-empty-msg{padding:22px 14px;text-align:center;color:rgba(232,221,208,0.28);font-style:italic;font-size:0.82rem;line-height:1.65;}
 
 /* POPUPS */
-.leaflet-popup-content-wrapper{background:#0d1019;border:1px solid rgba(20,210,190,0.25);border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.75);padding:0;}
+.leaflet-popup-content-wrapper{background:#0d1019;border:1px solid rgba(20,210,190,0.25);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.75);padding:0;}
 .leaflet-popup-tip{background:#0d1019;}
 .leaflet-popup-content{margin:0;width:248px!important;}
-.pi{padding:12px 14px 11px;}
+.pi{padding:12px 14px 11px;position:relative;cursor:pointer;border-radius:2px;transition:background 0.15s;}
+.pi:hover{background:rgba(32,210,190,0.06);}
+.mp-arrow{position:absolute;bottom:7px;right:10px;color:#20d2be;font-size:1rem;opacity:0.75;}
 .p-reg{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(232,221,208,0.28);margin-bottom:4px;font-family:'Cinzel',serif;}
 .p-name{font-family:'Cinzel',serif;font-size:0.88rem;font-weight:600;color:#ffa028;letter-spacing:0.04em;line-height:1.3;margin-bottom:5px;}
 .p-status{display:inline-block;font-size:0.57rem;font-family:'Cinzel',serif;letter-spacing:0.12em;text-transform:uppercase;padding:2px 6px;border-radius:2px;margin-bottom:7px;font-weight:600;}
@@ -102,8 +104,9 @@ header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-sp
 .mp-name{font-family:'Cinzel',serif;font-size:0.92rem;color:#20d2be;letter-spacing:0.04em;margin-bottom:3px;}
 .mp-date{font-size:0.72rem;color:rgba(232,221,208,0.42);margin-bottom:7px;}
 .mp-notes{font-size:0.77rem;color:rgba(232,221,208,0.58);font-style:italic;line-height:1.5;margin-bottom:8px;}
-.mp-open{display:block;font-size:0.63rem;font-family:'Cinzel',serif;letter-spacing:0.09em;text-transform:uppercase;color:#20d2be;padding:5px 9px;border:1px solid rgba(32,210,190,0.28);border-radius:2px;text-align:center;background:rgba(32,210,190,0.06);cursor:pointer;}
-.mp-open:hover{background:rgba(32,210,190,0.16);}
+.pgrid-spinner{grid-column:1/-1;display:flex;justify-content:center;align-items:center;padding:24px 0;}
+.spin-ring{width:28px;height:28px;border:3px solid rgba(32,210,190,0.18);border-top-color:#20d2be;border-radius:50%;animation:spin-r 0.7s linear infinite;}
+@keyframes spin-r{to{transform:rotate(360deg);}}
 .mp-thumb{width:100%;height:78px;object-fit:cover;border-radius:2px;margin-bottom:7px;display:block;}
 
 /* MARKERS */
@@ -117,7 +120,7 @@ header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-sp
 /* MODALS */
 .ov{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity 0.2s;}
 .ov.open{opacity:1;pointer-events:all;}
-.mb{background:#0c1018;border:1px solid rgba(20,210,190,0.18);border-radius:5px;width:92%;max-width:510px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8);}
+.mb{background:#0c1018;border:1px solid rgba(20,210,190,0.18);border-radius:14px;width:92%;max-width:510px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8);}
 .mb::-webkit-scrollbar{width:3px;}
 .mb::-webkit-scrollbar-thumb{background:rgba(20,210,190,0.18);border-radius:2px;}
 .mh{padding:14px 17px 12px;border-bottom:1px solid rgba(20,210,190,0.1);display:flex;align-items:flex-start;justify-content:space-between;}
@@ -634,7 +637,7 @@ async function addMMarker(loc) {
     } catch {}
   }
   const snippet = loc.notes ? (loc.notes.length > 70 ? loc.notes.slice(0,70)+'…' : loc.notes) : '';
-  const pop = `<div class="pi">${thumbHtml}<div class="mp-name">${loc.name}</div><div class="mp-date">${loc.date||'No date'}</div>${snippet?`<div class="mp-notes">${snippet}</div>`:''}<div class="mp-open" onclick="openView('${loc.id}')">→ View &amp; Photos</div></div>`;
+  const pop = `<div class="pi" onclick="openView('${loc.id}')"><div class="mp-arrow">→</div>${thumbHtml}<div class="mp-name">${loc.name}</div><div class="mp-date">${loc.date||'No date'}</div>${snippet?`<div class="mp-notes">${snippet}</div>`:''}</div>`;
   marker.bindPopup(pop, { closeButton:false, maxWidth:256 });
   mMarkers[loc.id] = marker;
   marker.addTo(mGroup);
@@ -759,12 +762,12 @@ window.openView = async function(id) {
   const loc = locs.find(l=>l.id===id);
   if (!loc) return;
   renderViewStatic(loc);
-  await renderPhotoGrid(loc);
   document.getElementById('view-ov').classList.add('open');
   if (mMarkers[id]) {
     map.setView([loc.lat,loc.lng], Math.max(map.getZoom(),11));
     setTimeout(()=>mMarkers[id].openPopup(), 300);
   }
+  renderPhotoGrid(loc);
 };
 
 function renderViewStatic(loc) {
@@ -837,32 +840,44 @@ async function renderPhotoGrid(loc) {
   grid.innerHTML = '';
   lbPhotos = [];
 
-  for (const pid of (loc.drivePhotoIds||[])) {
-    try {
-      const src = await getPhotoUrl(pid);
-      lbPhotos.push({ pid, src });
-      const idx = lbPhotos.length - 1;
-      const cell = document.createElement('div'); cell.className='pcell';
-      cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
-      cell.querySelector('img').addEventListener('click', () => openLb(idx));
-      cell.querySelector('.pdel').addEventListener('click', async e => {
-        e.stopPropagation();
-        if (!confirm('Delete this photo from Drive?')) return;
-        await deletePhoto(loc.id, pid);
-        const updated = locs.find(l=>l.id===loc.id);
-        if (updated) await renderPhotoGrid(updated);
-      });
-      grid.appendChild(cell);
-    } catch {}
+  const photoIds = loc.drivePhotoIds || [];
+  const count = photoIds.length;
+  countLbl.textContent = `${count}/${MAX_PHOTOS}`;
+
+  if (photoIds.length > 0) {
+    const spinner = document.createElement('div');
+    spinner.className = 'pgrid-spinner';
+    spinner.innerHTML = '<div class="spin-ring"></div>';
+    grid.appendChild(spinner);
+
+    for (const pid of photoIds) {
+      if (curLocId !== loc.id) return;
+      try {
+        const src = await getPhotoUrl(pid);
+        if (curLocId !== loc.id) return;
+        lbPhotos.push({ pid, src });
+        const idx = lbPhotos.length - 1;
+        const cell = document.createElement('div'); cell.className = 'pcell';
+        cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
+        cell.querySelector('img').addEventListener('click', () => openLb(idx));
+        cell.querySelector('.pdel').addEventListener('click', async e => {
+          e.stopPropagation();
+          if (!confirm('Delete this photo from Drive?')) return;
+          await deletePhoto(loc.id, pid);
+          const updated = locs.find(l => l.id === loc.id);
+          if (updated) await renderPhotoGrid(updated);
+        });
+        grid.insertBefore(cell, spinner);
+      } catch {}
+    }
+
+    if (grid.contains(spinner)) grid.removeChild(spinner);
   }
 
-  // Add button
-  const count = (loc.drivePhotoIds||[]).length;
-  countLbl.textContent = `${count}/${MAX_PHOTOS}`;
   const addCell = document.createElement('div');
   addCell.className = 'padd' + (count >= MAX_PHOTOS ? ' maxed' : '');
   addCell.innerHTML = '<span>＋</span><small>Add Photo</small>';
-  addCell.addEventListener('click', () => { if(count < MAX_PHOTOS) document.getElementById('photo-input').click(); });
+  addCell.addEventListener('click', () => { if (count < MAX_PHOTOS) document.getElementById('photo-input').click(); });
   grid.appendChild(addCell);
 }
 
