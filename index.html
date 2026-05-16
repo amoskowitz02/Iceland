@@ -664,10 +664,12 @@ si.addEventListener('input', () => {
 
 async function runSearch(q) {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({q:q+' Iceland',format:'json',limit:5,'accept-language':'en'})}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const base = 'https://nominatim.openstreetmap.org/search';
+    let data = await (await fetch(`${base}?${new URLSearchParams({q, format:'json', limit:5, 'accept-language':'en', countrycodes:'is'})}`)).json();
+    // Fallback: retry without country restriction if nothing found
+    if (!data.length) {
+      data = await (await fetch(`${base}?${new URLSearchParams({q:q+' Iceland', format:'json', limit:5, 'accept-language':'en'})}`)).json();
+    }
     renderDrop(data);
   } catch(e) {
     sd.innerHTML = `<div class="si"><small style="color:#ff6060">Search error: ${e.message}</small></div>`;
