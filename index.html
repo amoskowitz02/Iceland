@@ -222,7 +222,7 @@ header h1{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;letter-sp
     </div>
   </header>
   <div id="search-bar">
-    <input id="search-input" type="text" placeholder="Search, or paste coords / Google Maps link…" autocomplete="off">
+    <input id="search-input" type="text" placeholder="Search for a place in Iceland…" autocomplete="off">
     <div id="search-drop"></div>
   </div>
   <div id="map-wrap">
@@ -657,40 +657,10 @@ si.addEventListener('input', () => {
   clearTimeout(searchTimer);
   const q = si.value.trim();
   if (q.length < 2) { sd.style.display='none'; return; }
-
-  // Try to parse coords or Google Maps URL immediately
-  const direct = parseDirectInput(q);
-  if (direct) {
-    sd.innerHTML = '';
-    const el = document.createElement('div');
-    el.className = 'si';
-    el.innerHTML = `<b>📍 Use this location</b><small>${direct.lat.toFixed(5)}, ${direct.lng.toFixed(5)}</small>`;
-    el.addEventListener('click', () => {
-      sd.style.display = 'none'; si.value = '';
-      openAdd(direct.lat, direct.lng, direct.name || '');
-    });
-    sd.appendChild(el);
-    sd.style.display = 'block';
-    return;
-  }
-
   sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">Searching…</small></div>';
   sd.style.display = 'block';
   searchTimer = setTimeout(() => runSearch(q), 400);
 });
-
-function parseDirectInput(q) {
-  // "lat, lng" or "lat lng"
-  const coordMatch = q.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/);
-  if (coordMatch) return { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
-  // Google Maps URL — extracts @lat,lng from full URL
-  const mapsMatch = q.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (mapsMatch) return { lat: parseFloat(mapsMatch[1]), lng: parseFloat(mapsMatch[2]) };
-  // place/Name/@lat,lng format
-  const placeMatch = q.match(/place\/([^/]+)\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (placeMatch) return { lat: parseFloat(placeMatch[2]), lng: parseFloat(placeMatch[3]), name: decodeURIComponent(placeMatch[1]).replace(/\+/g,' ') };
-  return null;
-}
 
 async function runSearch(q) {
   try {
@@ -709,7 +679,7 @@ async function runSearch(q) {
 
 function renderDrop(results) {
   if (!results.length) {
-    sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">Not found — try pasting a Google Maps link or coordinates</small></div>';
+    sd.innerHTML = '<div class="si"><small style="color:rgba(232,221,208,0.38)">No results found in Iceland</small></div>';
     sd.style.display = 'block';
     return;
   }
