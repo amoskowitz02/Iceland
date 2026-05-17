@@ -57,7 +57,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .so-btn:hover{color:#e8ddd0;border-color:rgba(255,255,255,0.2);}
 
 /* SEARCH */
-#search-bar{padding:9px 16px;background:rgba(7,9,14,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(32,210,190,0.08);flex-shrink:0;display:none;position:relative;z-index:1;}
+#search-bar{padding:9px 16px;background:rgba(7,9,14,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(32,210,190,0.08);flex-shrink:0;display:none;position:relative;z-index:1000;}
 #search-bar.show{display:block;}
 #search-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:50px;color:#e8ddd0;font-family:'Inter',sans-serif;font-size:0.875rem;font-weight:300;padding:9px 18px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
 #search-input:focus{border-color:rgba(32,210,190,0.4);box-shadow:0 0 0 3px rgba(32,210,190,0.08);}
@@ -160,7 +160,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .psec{padding:14px 24px;}
 .psec-lbl{font-size:0.62rem;font-weight:500;text-transform:uppercase;letter-spacing:0.12em;color:rgba(232,221,208,0.28);margin-bottom:10px;}
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-.pcell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);}
+.pcell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);user-select:none;-webkit-user-select:none;}
 .pcell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s;pointer-events:none;user-select:none;}
 .pcell:hover img{opacity:0.78;}
 .pdel{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#e8ddd0;font-size:0.62rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
@@ -168,7 +168,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .pdel:hover{background:rgba(200,60,30,0.85);}
 .cover-badge{position:absolute;top:5px;left:5px;background:rgba(32,210,190,0.9);color:#07090e;font-size:0.5rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:2px 7px;border-radius:50px;pointer-events:none;}
 .pcell-menu{position:absolute;inset:0;background:rgba(0,0,0,0.6);border-radius:12px;display:flex;align-items:center;justify-content:center;z-index:10;}
-.pcell-menu-btn{background:rgba(32,210,190,0.2);border:1px solid rgba(32,210,190,0.55);color:#3dd6c8;font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;padding:8px 16px;border-radius:50px;cursor:pointer;transition:all 0.18s;}
+.pcell-menu-btn{background:rgba(32,210,190,0.2);border:1px solid rgba(32,210,190,0.55);color:#3dd6c8;font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;padding:8px 16px;border-radius:50px;cursor:pointer;transition:all 0.18s;user-select:none;-webkit-user-select:none;}
 .pcell-menu-btn:hover{background:rgba(32,210,190,0.38);}
 .padd{aspect-ratio:1;border-radius:12px;border:1px dashed rgba(32,210,190,0.2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;transition:all 0.2s;}
 .padd:hover{border-color:rgba(32,210,190,0.45);background:rgba(32,210,190,0.04);}
