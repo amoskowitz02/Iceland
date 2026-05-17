@@ -141,7 +141,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .mbody{padding:18px 24px;}
 .fld{margin-bottom:14px;}
 .fld label{display:block;font-size:0.62rem;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;color:rgba(232,221,208,0.35);margin-bottom:6px;}
-.fld input,.fld textarea{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e8ddd0;font-family:'Inter',sans-serif;font-size:0.875rem;font-weight:300;padding:10px 14px;outline:none;resize:vertical;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;}
+.fld input,.fld textarea{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e8ddd0;font-family:'Inter',sans-serif;font-size:0.875rem;font-weight:300;padding:10px 14px;outline:none;resize:vertical;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;appearance:none;}
 .fld input:focus,.fld textarea:focus{border-color:rgba(32,210,190,0.4);box-shadow:0 0 0 3px rgba(32,210,190,0.08);}
 .fld textarea{min-height:76px;}
 .mact{display:flex;gap:8px;justify-content:flex-end;padding:14px 24px 20px;border-top:1px solid rgba(255,255,255,0.05);}
@@ -634,7 +634,7 @@ const VOLCANOES = [
   {n:"Ljósufjöll",lat:64.867,lng:-22.233,st:"dormant",r:"Western Volcanic Zone",d:"Volcanic system in Dalir. Last eruption ~1,000 years ago.",w:"https://en.wikipedia.org/wiki/Lj%C3%B3sufj%C3%B6ll"},
   {n:"Helgrindur",lat:64.933,lng:-23.017,st:"dormant",r:"Western Volcanic Zone",d:"Mountains on Snæfellsnes formed by volcanic activity.",w:"https://en.wikipedia.org/wiki/Helgrindur"},
   {n:"Snæfellsjökull",lat:64.808,lng:-23.783,st:"dormant",r:"Snæfellsnes",d:"Jules Verne set Journey to the Center of the Earth here. Last erupted ~1,800 years ago.",w:"https://en.wikipedia.org/wiki/Sn%C3%A6fellsj%C3%B6kull"},
-  {n:"Saxhóll",lat:64.883,lng:-23.717,st:"inactive",r:"Snæfellsnes",d:"Small scoria crater — short staircase to panoramic views.",w:null},
+  {n:"Saxhóll",lat:64.851,lng:-23.927,st:"inactive",r:"Snæfellsnes",d:"Small scoria crater — short staircase to panoramic views.",w:null},
   {n:"Búðaklettur",lat:64.817,lng:-23.383,st:"inactive",r:"Snæfellsnes",d:"Volcanic formation near the famous black church at Búðir.",w:null},
   {n:"Hekla",lat:63.992,lng:-19.666,st:"active",r:"Eastern Volcanic Zone",d:"'Gateway to Hell' in medieval Europe. 20+ eruptions since 874 AD. Last erupted 2000.",w:"https://en.wikipedia.org/wiki/Hekla"},
   {n:"Tindfjallajökull",lat:63.783,lng:-19.567,st:"dormant",r:"Eastern Volcanic Zone",d:"Small ice cap over an ancient central volcano.",w:"https://en.wikipedia.org/wiki/Tindfjallaj%C3%B6kull"},
@@ -1132,6 +1132,13 @@ document.getElementById('photo-input').addEventListener('change', async e => {
         const updated = locs.find(l=>l.id===loc.id);
         if (updated) await renderPhotoGrid(updated);
       });
+      if (loc.drivePhotoIds.length === 1) {
+        const badge = document.createElement('div');
+        badge.className = 'cover-badge'; badge.textContent = 'Cover';
+        cell.appendChild(badge);
+      } else {
+        addLongPress(cell, () => showCoverMenu(cell, pid, loc));
+      }
       spinner.replaceWith(cell);
       document.getElementById('pcount').textContent = `${loc.drivePhotoIds.length}/${MAX_PHOTOS}`;
     } catch(err) {
@@ -1143,12 +1150,6 @@ document.getElementById('photo-input').addEventListener('change', async e => {
   // Save once at the end, not after every upload
   await saveLocs();
   await addMMarker(loc);
-
-  // Rebuild grid so cover badge and long-press handlers are attached
-  if (curLocId === loc.id) {
-    const updated = locs.find(l => l.id === loc.id);
-    if (updated) await renderPhotoGrid(updated);
-  }
 
   // Update add button state
   const count = loc.drivePhotoIds.length;
