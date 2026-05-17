@@ -113,6 +113,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .p-desc{font-size:0.78rem;font-weight:300;color:rgba(232,221,208,0.62);line-height:1.6;margin-bottom:10px;}
 .p-wiki{display:block;font-size:0.68rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#20d2be;text-decoration:none;padding:8px 14px;border:1px solid rgba(32,210,190,0.25);border-radius:50px;text-align:center;background:rgba(32,210,190,0.06);transition:all 0.2s;}
 .p-wiki:hover{background:rgba(32,210,190,0.14);border-color:rgba(32,210,190,0.5);}
+.p-vol-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;margin-bottom:12px;display:block;}
 .p-nowiki{font-size:0.63rem;color:rgba(232,221,208,0.2);text-align:center;font-weight:300;}
 
 /* MARKERS */
@@ -670,12 +671,47 @@ function initMap() {
   mGroup = L.layerGroup().addTo(map);
 
   // Volcano markers
+  const volcImgCache = {};
+  function wikiTitle(url) {
+    try { return decodeURIComponent(url.split('/wiki/').pop()); } catch { return null; }
+  }
+  async function fetchVolcImg(title) {
+    if (title in volcImgCache) return volcImgCache[title];
+    try {
+      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      const data = r.ok ? await r.json() : {};
+      volcImgCache[title] = data.thumbnail?.source || null;
+    } catch { volcImgCache[title] = null; }
+    return volcImgCache[title];
+  }
+
   VOLCANOES.forEach(v => {
     const c = VC[v.st];
     const icon = L.divIcon({ className:'', html:`<div class="vdot" style="width:11px;height:11px;background:${c.f};border-color:${c.s};box-shadow:0 0 5px ${c.g},0 0 2px rgba(0,0,0,0.9);"></div>`, iconSize:[11,11], iconAnchor:[5,5], popupAnchor:[0,-7] });
     const lbl = v.st[0].toUpperCase() + v.st.slice(1);
     const pop = `<div class="pi"><div class="p-reg">${v.r}</div><div class="p-name">${v.n}</div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${v.w ? `<a class="p-wiki" href="${v.w}" target="_blank" rel="noopener">→ Wikipedia</a>` : '<div class="p-nowiki">No Wikipedia article</div>'}</div>`;
-    L.marker([v.lat,v.lng], { icon }).bindPopup(pop, { closeButton:false, maxWidth:260 }).addTo(vGroup);
+    const marker = L.marker([v.lat,v.lng], { icon }).bindPopup(pop, { closeButton:false, maxWidth:260 });
+
+    if (v.w) {
+      const title = wikiTitle(v.w);
+      if (title) {
+        marker.on('popupopen', async (e) => {
+          const popup = e.popup;
+          const container = popup.getElement()?.querySelector('.pi');
+          if (!container || container.querySelector('.p-vol-img')) return;
+          const src = await fetchVolcImg(title);
+          if (!src || !container.isConnected) return;
+          const img = document.createElement('img');
+          img.className = 'p-vol-img';
+          img.src = src;
+          img.alt = v.n;
+          img.onload = () => popup.update();
+          container.insertBefore(img, container.firstChild);
+        });
+      }
+    }
+
+    marker.addTo(vGroup);
   });
 
   // GPS dot placeholder
