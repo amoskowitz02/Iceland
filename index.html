@@ -841,7 +841,13 @@ function renderDrop(predictions) {
         const det = await (await fetch(`/api/places?placeid=${encodeURIComponent(p.place_id)}`)).json();
         if (det.status === 'OK' && det.result.geometry) {
           const { lat, lng } = det.result.geometry.location;
-          openAdd(lat, lng, det.result.name || name);
+          const placeName = det.result.name || name;
+          const existing = locs.find(l => l.name.toLowerCase() === placeName.toLowerCase());
+          if (existing) {
+            openView(existing.id);
+          } else {
+            openAdd(lat, lng, placeName);
+          }
         }
       } catch(e) { alert('Could not get location: ' + e.message); }
     });
@@ -1137,6 +1143,12 @@ document.getElementById('photo-input').addEventListener('change', async e => {
   // Save once at the end, not after every upload
   await saveLocs();
   await addMMarker(loc);
+
+  // Rebuild grid so cover badge and long-press handlers are attached
+  if (curLocId === loc.id) {
+    const updated = locs.find(l => l.id === loc.id);
+    if (updated) await renderPhotoGrid(updated);
+  }
 
   // Update add button state
   const count = loc.drivePhotoIds.length;
