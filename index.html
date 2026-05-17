@@ -166,6 +166,10 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .pdel{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#e8ddd0;font-size:0.62rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
 .pcell:hover .pdel{display:flex;}
 .pdel:hover{background:rgba(200,60,30,0.85);}
+.cover-badge{position:absolute;top:5px;left:5px;background:rgba(32,210,190,0.9);color:#07090e;font-size:0.5rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:2px 7px;border-radius:50px;pointer-events:none;}
+.pcell-menu{position:absolute;inset:0;background:rgba(0,0,0,0.6);border-radius:12px;display:flex;align-items:center;justify-content:center;z-index:10;}
+.pcell-menu-btn{background:rgba(32,210,190,0.2);border:1px solid rgba(32,210,190,0.55);color:#3dd6c8;font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;padding:8px 16px;border-radius:50px;cursor:pointer;transition:all 0.18s;}
+.pcell-menu-btn:hover{background:rgba(32,210,190,0.38);}
 .padd{aspect-ratio:1;border-radius:12px;border:1px dashed rgba(32,210,190,0.2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;transition:all 0.2s;}
 .padd:hover{border-color:rgba(32,210,190,0.45);background:rgba(32,210,190,0.04);}
 .padd span{font-size:1.3rem;color:rgba(232,221,208,0.18);}
@@ -982,6 +986,43 @@ document.getElementById('del-loc').addEventListener('click', async () => {
 // ══════════════════════════════════
 // PHOTO GRID
 // ══════════════════════════════════
+function addLongPress(el, onLongPress) {
+  let timer = null, didFire = false;
+  const start = () => { didFire = false; timer = setTimeout(() => { didFire = true; timer = null; onLongPress(); }, 600); };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('pointermove', cancel);
+  el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); });
+  el.addEventListener('click', e => { if (didFire) { didFire = false; e.stopPropagation(); } }, true);
+}
+
+async function setCoverPhoto(loc, pid) {
+  const ids = loc.drivePhotoIds || [];
+  const idx = ids.indexOf(pid);
+  if (idx <= 0) return;
+  ids.splice(idx, 1);
+  ids.unshift(pid);
+  await saveLocs();
+  await addMMarker(loc);
+  const updated = locs.find(l => l.id === loc.id);
+  if (updated) await renderPhotoGrid(updated);
+}
+
+function showCoverMenu(cell, pid, loc) {
+  document.querySelectorAll('.pcell-menu').forEach(m => m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'pcell-menu';
+  const btn = document.createElement('button');
+  btn.className = 'pcell-menu-btn';
+  btn.textContent = '⭐ Set as cover';
+  btn.addEventListener('click', async e => { e.stopPropagation(); menu.remove(); await setCoverPhoto(loc, pid); });
+  menu.appendChild(btn);
+  cell.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
+
 async function renderPhotoGrid(loc) {
   const grid = document.getElementById('pgrid');
   const countLbl = document.getElementById('pcount');
@@ -1005,8 +1046,9 @@ async function renderPhotoGrid(loc) {
         if (curLocId !== loc.id) return;
         lbPhotos.push({ pid, src });
         const idx = lbPhotos.length - 1;
+        const isCover = idx === 0;
         const cell = document.createElement('div'); cell.className = 'pcell';
-        cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
+        cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>${isCover ? '<div class="cover-badge">Cover</div>' : ''}`;
         cell.querySelector('img').addEventListener('click', () => openLb(idx));
         cell.querySelector('.pdel').addEventListener('click', async e => {
           e.stopPropagation();
@@ -1015,6 +1057,7 @@ async function renderPhotoGrid(loc) {
           const updated = locs.find(l => l.id === loc.id);
           if (updated) await renderPhotoGrid(updated);
         });
+        if (!isCover) addLongPress(cell, () => showCoverMenu(cell, pid, loc));
         grid.insertBefore(cell, spinner);
       } catch {}
     }
