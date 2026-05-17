@@ -114,6 +114,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .p-wiki{display:block;font-size:0.68rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#20d2be;text-decoration:none;padding:8px 14px;border:1px solid rgba(32,210,190,0.25);border-radius:50px;text-align:center;background:rgba(32,210,190,0.06);transition:all 0.2s;}
 .p-wiki:hover{background:rgba(32,210,190,0.14);border-color:rgba(32,210,190,0.5);}
 .p-vol-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;margin-bottom:12px;display:block;}
+.p-vol-img-loading{width:100%;aspect-ratio:1;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
 .p-nowiki{font-size:0.63rem;color:rgba(232,221,208,0.2);text-align:center;font-weight:300;}
 
 /* MARKERS */
@@ -672,6 +673,8 @@ function initMap() {
 
   // Volcano markers
   const volcImgCache = {};
+  const volcMarkers = [];
+
   function wikiTitle(url) {
     try { return decodeURIComponent(url.split('/wiki/').pop()); } catch { return null; }
   }
@@ -684,35 +687,36 @@ function initMap() {
     } catch { volcImgCache[title] = null; }
     return volcImgCache[title];
   }
+  function buildVolcPop(v, imgSrc) {
+    const lbl = v.st[0].toUpperCase() + v.st.slice(1);
+    const imgHtml = v.w
+      ? (imgSrc
+          ? `<img class="p-vol-img" src="${imgSrc}" alt="${v.n}">`
+          : '<div class="p-vol-img-loading"><div class="spin-ring"></div></div>')
+      : '';
+    const wiki = v.w
+      ? `<a class="p-wiki" href="${v.w}" target="_blank" rel="noopener">→ Wikipedia</a>`
+      : '<div class="p-nowiki">No Wikipedia article</div>';
+    return `<div class="pi">${imgHtml}<div class="p-reg">${v.r}</div><div class="p-name">${v.n}</div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${wiki}</div>`;
+  }
 
-  VOLCANOES.forEach(v => {
+  VOLCANOES.forEach((v, i) => {
     const c = VC[v.st];
     const icon = L.divIcon({ className:'', html:`<div class="vdot" style="width:11px;height:11px;background:${c.f};border-color:${c.s};box-shadow:0 0 5px ${c.g},0 0 2px rgba(0,0,0,0.9);"></div>`, iconSize:[11,11], iconAnchor:[5,5], popupAnchor:[0,-7] });
-    const lbl = v.st[0].toUpperCase() + v.st.slice(1);
-    const pop = `<div class="pi"><div class="p-reg">${v.r}</div><div class="p-name">${v.n}</div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${v.w ? `<a class="p-wiki" href="${v.w}" target="_blank" rel="noopener">→ Wikipedia</a>` : '<div class="p-nowiki">No Wikipedia article</div>'}</div>`;
-    const marker = L.marker([v.lat,v.lng], { icon }).bindPopup(pop, { closeButton:false, maxWidth:260 });
-
-    if (v.w) {
-      const title = wikiTitle(v.w);
-      if (title) {
-        marker.on('popupopen', async (e) => {
-          const popup = e.popup;
-          const container = popup.getElement()?.querySelector('.pi');
-          if (!container || container.querySelector('.p-vol-img')) return;
-          const src = await fetchVolcImg(title);
-          if (!src || !container.isConnected) return;
-          const img = document.createElement('img');
-          img.className = 'p-vol-img';
-          img.src = src;
-          img.alt = v.n;
-          img.onload = () => popup.update();
-          container.insertBefore(img, container.firstChild);
-        });
-      }
-    }
-
+    const marker = L.marker([v.lat,v.lng], { icon }).bindPopup(buildVolcPop(v, null), { closeButton:false, maxWidth:260 });
+    volcMarkers.push(marker);
     marker.addTo(vGroup);
   });
+
+  // Pre-fetch all Wikipedia thumbnails immediately — spinner shows while loading
+  Promise.all(VOLCANOES.map(async (v, i) => {
+    if (!v.w) return;
+    const title = wikiTitle(v.w);
+    if (!title) return;
+    const src = await fetchVolcImg(title);
+    // setContent updates the live popup if open, and stores content for next open
+    volcMarkers[i].getPopup().setContent(buildVolcPop(v, src));
+  }));
 
   // GPS dot placeholder
   const youIcon = L.divIcon({ className:'', html:'<div class="ydot"></div>', iconSize:[13,13], iconAnchor:[6,6], popupAnchor:[0,-10] });
