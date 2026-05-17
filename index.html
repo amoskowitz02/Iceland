@@ -116,6 +116,8 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .p-vol-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;margin-bottom:12px;display:block;}
 .p-vol-img-loading{width:100%;aspect-ratio:1;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
 .p-nowiki{font-size:0.63rem;color:rgba(232,221,208,0.2);text-align:center;font-weight:300;}
+.spk-btn{background:none;border:none;color:rgba(32,210,190,0.45);cursor:pointer;font-size:0.75rem;padding:1px 5px;line-height:1;border-radius:50px;transition:color 0.15s;vertical-align:middle;margin-left:5px;}
+.spk-btn:hover{color:#20d2be;}
 
 /* MARKERS */
 .vdot{border-radius:50%;border:2px solid;cursor:pointer;transition:transform 0.15s;}
@@ -574,6 +576,17 @@ async function getPhotoUrl(driveId) {
 }
 
 // ══════════════════════════════════
+// PRONUNCIATION
+// ══════════════════════════════════
+function speak(name) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(name);
+  u.lang = 'is';
+  speechSynthesis.speak(u);
+}
+
+// ══════════════════════════════════
 // MAP
 // ══════════════════════════════════
 const VC = {
@@ -709,7 +722,8 @@ function initMap() {
     const wiki = v.w
       ? `<a class="p-wiki" href="${v.w}" target="_blank" rel="noopener">→ Wikipedia</a>`
       : '<div class="p-nowiki">No Wikipedia article</div>';
-    return `<div class="pi">${imgHtml}<div class="p-reg">${v.r}</div><div class="p-name">${v.n}</div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${wiki}</div>`;
+    const escapedN = v.n.replace(/"/g,'&quot;');
+    return `<div class="pi">${imgHtml}<div class="p-reg">${v.r}</div><div class="p-name">${v.n}<button class="spk-btn" data-name="${escapedN}" onclick="speak(this.dataset.name)" title="Pronounce">🔊</button></div><div><span class="p-status s-${v.st.slice(0,3)}">${lbl}</span></div><div class="p-desc">${v.d}</div>${wiki}</div>`;
   }
 
   VOLCANOES.forEach((v, i) => {
@@ -765,7 +779,8 @@ async function addMMarker(loc) {
     } catch {}
   }
   const snippet = loc.notes ? (loc.notes.length > 70 ? loc.notes.slice(0,70)+'…' : loc.notes) : '';
-  const pop = `<div class="pi" onclick="openView('${loc.id}')"><div class="mp-arrow">→</div>${thumbHtml}<div class="mp-name">${loc.name}</div><div class="mp-date">${loc.date||'No date'}</div>${snippet?`<div class="mp-notes">${snippet}</div>`:''}</div>`;
+  const escLocName = loc.name.replace(/"/g,'&quot;');
+  const pop = `<div class="pi" onclick="openView('${loc.id}')"><div class="mp-arrow">→</div>${thumbHtml}<div class="mp-name">${loc.name}<button class="spk-btn" data-name="${escLocName}" onclick="event.stopPropagation();speak(this.dataset.name)" title="Pronounce">🔊</button></div><div class="mp-date">${loc.date||'No date'}</div>${snippet?`<div class="mp-notes">${snippet}</div>`:''}</div>`;
   marker.bindPopup(pop, { closeButton:false, maxWidth:256 });
   mMarkers[loc.id] = marker;
   marker.addTo(mGroup);
@@ -899,7 +914,12 @@ window.openView = async function(id) {
 };
 
 function renderViewStatic(loc) {
-  document.getElementById('vname').textContent = loc.name;
+  const vnEl = document.getElementById('vname');
+  vnEl.textContent = loc.name;
+  const sb = document.createElement('button');
+  sb.className = 'spk-btn'; sb.title = 'Pronounce'; sb.textContent = '🔊';
+  sb.onclick = () => speak(loc.name);
+  vnEl.appendChild(sb);
   document.getElementById('vdate').textContent = loc.date || 'No date';
   document.getElementById('vnotes').textContent = loc.notes || 'No notes.';
   document.getElementById('sv').style.display = '';
