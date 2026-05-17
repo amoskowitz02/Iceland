@@ -161,7 +161,7 @@ header h1{font-family:'Cinzel',serif;font-size:0.98rem;font-weight:600;letter-sp
 .psec-lbl{font-size:0.62rem;font-weight:500;text-transform:uppercase;letter-spacing:0.12em;color:rgba(232,221,208,0.28);margin-bottom:10px;}
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .pcell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);}
-.pcell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s;-webkit-touch-callout:none;user-select:none;}
+.pcell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s;pointer-events:none;user-select:none;}
 .pcell:hover img{opacity:0.78;}
 .pdel{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#e8ddd0;font-size:0.62rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
 .pcell:hover .pdel{display:flex;}
@@ -988,13 +988,13 @@ document.getElementById('del-loc').addEventListener('click', async () => {
 // ══════════════════════════════════
 function addLongPress(el, onLongPress) {
   let timer = null, didFire = false;
-  const start = () => { didFire = false; timer = setTimeout(() => { didFire = true; timer = null; onLongPress(); }, 600); };
+  const fire = () => { if (!didFire) { didFire = true; if (timer) { clearTimeout(timer); timer = null; } onLongPress(); } };
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
-  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerdown', () => { didFire = false; timer = setTimeout(fire, 500); });
   el.addEventListener('pointerup', cancel);
   el.addEventListener('pointercancel', cancel);
   el.addEventListener('pointermove', cancel);
-  el.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); fire(); });
   el.addEventListener('click', e => { if (didFire) { didFire = false; e.stopPropagation(); } }, true);
 }
 
@@ -1049,7 +1049,7 @@ async function renderPhotoGrid(loc) {
         const isCover = idx === 0;
         const cell = document.createElement('div'); cell.className = 'pcell';
         cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>${isCover ? '<div class="cover-badge">Cover</div>' : ''}`;
-        cell.querySelector('img').addEventListener('click', () => openLb(idx));
+        cell.addEventListener('click', () => openLb(idx));
         cell.querySelector('.pdel').addEventListener('click', async e => {
           e.stopPropagation();
           if (!confirm('Delete this photo from Drive?')) return;
@@ -1118,7 +1118,7 @@ document.getElementById('photo-input').addEventListener('change', async e => {
 
       const cell = document.createElement('div'); cell.className='pcell';
       cell.innerHTML = `<img src="${src}" alt="" loading="lazy"><button class="pdel">✕</button>`;
-      cell.querySelector('img').addEventListener('click', () => openLb(idx));
+      cell.addEventListener('click', () => openLb(idx));
       cell.querySelector('.pdel').addEventListener('click', async ev => {
         ev.stopPropagation();
         if (!confirm('Delete this photo from Drive?')) return;
