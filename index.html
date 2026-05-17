@@ -338,14 +338,44 @@ let searchTimer = null;
 // ══════════════════════════════════
 // AUTH
 // ══════════════════════════════════
-let gsiReady = false;
-function onGsiLoad() {
-  gsiReady = true;
+const TOK_KEY = 'iceland_tok';
+const TOK_EXP = 'iceland_tok_exp';
+
+function saveToken(t) {
+  token = t;
+  localStorage.setItem(TOK_KEY, t);
+  localStorage.setItem(TOK_EXP, String(Date.now() + 55 * 60 * 1000));
+}
+function clearToken() {
+  localStorage.removeItem(TOK_KEY);
+  localStorage.removeItem(TOK_EXP);
+  token = null;
+}
+
+const GSVG = '<svg viewBox="0 0 18 18" width="18" height="18" style="flex-shrink:0"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>';
+
+function showSignIn() {
   const btn = document.getElementById('sign-in-btn');
   btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 18 18" width="18" height="18" style="flex-shrink:0"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>Sign in with Google';
+  btn.innerHTML = GSVG + 'Sign in with Google';
   document.getElementById('loading').classList.add('gone');
   document.getElementById('auth-screen').classList.remove('gone');
+}
+
+let gsiReady = false;
+async function onGsiLoad() {
+  gsiReady = true;
+  const stored = localStorage.getItem(TOK_KEY);
+  const exp    = parseInt(localStorage.getItem(TOK_EXP) || '0');
+  if (stored && Date.now() < exp) {
+    // Valid cached token — skip sign-in screen entirely
+    token = stored;
+    document.getElementById('auth-screen').classList.add('gone');
+    document.querySelector('#loading p').textContent = 'Resuming session…';
+    await boot(true);
+    return;
+  }
+  showSignIn();
 }
 
 // Poll for GSI readiness
@@ -380,7 +410,7 @@ document.getElementById('sign-in-btn').addEventListener('click', () => {
         }
         return;
       }
-      token = r.access_token;
+      saveToken(r.access_token);
       setMsg('Checking access…');
       await boot();
     },
@@ -396,26 +426,23 @@ document.getElementById('sign-in-btn').addEventListener('click', () => {
   client.requestAccessToken({ prompt: 'select_account' });
 });
 
-async function boot() {
-  const btn = document.getElementById('sign-in-btn');
+async function boot(fromCache = false) {
   try {
-    // Get email
     const me = await dGet('https://www.googleapis.com/oauth2/v2/userinfo');
     document.getElementById('user-label').textContent = me.email || '';
 
-    // Check folder access
     const ok = await checkFolderAccess();
     if (!ok) {
+      document.getElementById('loading').classList.add('gone');
       document.getElementById('auth-screen').classList.add('gone');
       document.getElementById('no-access').classList.add('show');
       return;
     }
 
-    // Load data
     setMsg('Loading trip data…');
     await loadLocs();
 
-    // Show app
+    document.getElementById('loading').classList.add('gone');
     document.getElementById('auth-screen').classList.add('gone');
     document.getElementById('app').classList.add('show');
     if (!map) initMap();
@@ -426,16 +453,22 @@ async function boot() {
 
   } catch(e) {
     console.error(e);
-    setMsg('Error: ' + e.message);
-    btn.disabled = false;
+    if (fromCache) {
+      // Cached token rejected — clear it and fall back to sign-in
+      clearToken();
+      showSignIn();
+    } else {
+      setMsg('Error: ' + e.message);
+      document.getElementById('sign-in-btn').disabled = false;
+    }
   }
 }
 
 function setMsg(m) { document.getElementById('auth-msg').textContent = m; }
 
 function signOut() {
-  if (token) google.accounts.oauth2.revoke(token, ()=>{});
-  token = null;
+  if (token) google.accounts.oauth2.revoke(token, () => {});
+  clearToken();
   location.reload();
 }
 
